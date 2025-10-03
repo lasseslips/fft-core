@@ -122,12 +122,11 @@ class Butterfly2Spec extends AnyFlatSpec with ChiselScalatestTester {
     test(new Butterfly2(16, 8)) { dut =>
       println("Testing with random vectors")
       
-      val random = new scala.util.Random(42) // Fixed seed for reproducibility
+      val random = new scala.util.Random(42) 
       val tolerance = 0.02
       val numTests = 10
       
       for (i <- 0 until numTests) {
-        // Generate random test vectors (keeping values reasonable for fixed point)
         val in0_r = (random.nextDouble() - 0.5) * 2
         val in0_j = (random.nextDouble() - 0.5) * 2  
         val in1_r = (random.nextDouble() - 0.5) * 2
@@ -169,4 +168,96 @@ class Butterfly2Spec extends AnyFlatSpec with ChiselScalatestTester {
       println("Test 4: all %d random test vectors passed".format(numTests))
     }
   }
+  
+  "Butterfly2" should "match Python NumPy FFT results (if Python available)" in {
+    test(new Butterfly2(16, 8)) { dut =>
+      println("Testing against Python NumPy FFT (if available)")
+      
+      if (PythonFFTVerifier.isPythonAvailable) {
+        println("Python / NumPy detected - running FFT tests")
+        
+        val numTests = 10 
+        val random = new scala.util.Random(42)
+        val tolerance = 0.01
+        
+        for (testNum <- 1 to numTests) {
+          println(f"\n--- Random Test Case $testNum/$numTests ---")
+          
+          // Generate random 2-point input
+          val in0_r = (random.nextDouble() - 0.5) * 2
+          val in0_j = (random.nextDouble() - 0.5) * 2  
+          val in1_r = (random.nextDouble() - 0.5) * 2
+          val in1_j = (random.nextDouble() - 0.5) * 2
+          val tw_r = 1.0; val tw_j = 0.0  // For 2-point FFT, twiddle is 1
+          
+          println(f"Input: x[0] = $in0_r%.3f + ${in0_j}%.3fj, x[1] = $in1_r%.3f + ${in1_j}%.3fj")
+          
+          // Get Python reference using N-point with N=2
+          val input2Point = Seq((in0_r, in0_j), (in1_r, in1_j))
+          PythonFFTVerifier.verifyNPointFFTWithPython(input2Point) match {
+            case Some(pythonResult) if pythonResult.length == 2 =>
+              val (python_out0_r, python_out0_j) = pythonResult(0)
+              val (python_out1_r, python_out1_j) = pythonResult(1)
+              
+              dut.io.in0.real.poke(FixedPointUtils.doubleToFixedPoint(in0_r, 16, 8).S)
+              dut.io.in0.imag.poke(FixedPointUtils.doubleToFixedPoint(in0_j, 16, 8).S)
+              dut.io.in1.real.poke(FixedPointUtils.doubleToFixedPoint(in1_r, 16, 8).S)
+              dut.io.in1.imag.poke(FixedPointUtils.doubleToFixedPoint(in1_j, 16, 8).S)
+              dut.io.twiddle.real.poke(FixedPointUtils.doubleToFixedPoint(tw_r, 16, 8).S)
+              dut.io.twiddle.imag.poke(FixedPointUtils.doubleToFixedPoint(tw_j, 16, 8).S)
+              
+              dut.clock.step(1)
+              
+              val act_out0_r = FixedPointUtils.fixedPointToDouble(dut.io.out0.real.peekInt(), 16, 8)
+              val act_out0_j = FixedPointUtils.fixedPointToDouble(dut.io.out0.imag.peekInt(), 16, 8)
+              val act_out1_r = FixedPointUtils.fixedPointToDouble(dut.io.out1.real.peekInt(), 16, 8)
+              val act_out1_j = FixedPointUtils.fixedPointToDouble(dut.io.out1.imag.peekInt(), 16, 8)
+              
+              // Compare with Python results
+              val errors = Seq(
+                ("out0.real", act_out0_r, python_out0_r, abs(act_out0_r - python_out0_r)),
+                ("out0.imag", act_out0_j, python_out0_j, abs(act_out0_j - python_out0_j)),
+                ("out1.real", act_out1_r, python_out1_r, abs(act_out1_r - python_out1_r)),
+                ("out1.imag", act_out1_j, python_out1_j, abs(act_out1_j - python_out1_j))
+              )
+              
+              val maxError = errors.map(_._4).max
+              println(f"Max error: $maxError%.6f (tolerance: $tolerance)")
+              
+              errors.foreach { case (name, hw, py, err) =>
+                val status = if (err < tolerance) "PASS" else "FAIL"
+                println(f"  $status $name: Python=$py%.6f, Hardware=$hw%.6f, Error=$err%.6f")
+              }
+              
+              // Asserts to fail test
+              assert(abs(act_out0_r - python_out0_r) < tolerance, 
+                     f"Test case $testNum/$numTests FAILED on out0.real: Python=$python_out0_r%.6f, Hardware=$act_out0_r%.6f, Error=${abs(act_out0_r - python_out0_r)}%.6f > $tolerance")
+              assert(abs(act_out0_j - python_out0_j) < tolerance, 
+                     f"Test case $testNum/$numTests FAILED on out0.imag: Python=$python_out0_j%.6f, Hardware=$act_out0_j%.6f, Error=${abs(act_out0_j - python_out0_j)}%.6f > $tolerance")
+              assert(abs(act_out1_r - python_out1_r) < tolerance, 
+                     f"Test case $testNum/$numTests FAILED on out1.real: Python=$python_out1_r%.6f, Hardware=$act_out1_r%.6f, Error=${abs(act_out1_r - python_out1_r)}%.6f > $tolerance")
+              assert(abs(act_out1_j - python_out1_j) < tolerance, 
+                     f"Test case $testNum/$numTests FAILED on out1.imag: Python=$python_out1_j%.6f, Hardware=$act_out1_j%.6f, Error=${abs(act_out1_j - python_out1_j)}%.6f > $tolerance")
+              
+              println("Test case $testNum passed!")
+              
+            case Some(pythonResult) =>
+              println(s"Python verification returned unexpected result length: ${pythonResult.length}, expected 2")
+              fail(s"Test case $testNum/$numTests FAILED: Python FFT returned ${pythonResult.length} results instead of 2")
+              
+            case None =>
+              println("Python verification failed - could not get results")
+              fail(s"Test case $testNum/$numTests FAILED: Could not get Python FFT reference")
+          }
+        }
+        
+        println(f"\nAll $numTests random test cases passed!")
+        
+      } else {
+        println("Python / NumPy not available - skipping this test")
+        fail("Python / NumPy not available")
+      }
+    }
+  }
+  
 }
