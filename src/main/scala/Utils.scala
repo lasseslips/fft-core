@@ -23,6 +23,12 @@ object Butterfly2GoldenModel {
   }
 }
 
+object OtherUtils {
+    def calculateNumberOfTwiddles(N : Int): Int = {
+      N/2 * (log(N)/log(2)).toInt
+    }
+}
+
 object FixedPointUtils {
   
   // Helper function to convert double to fixed point value (returns signed representation)
@@ -37,10 +43,8 @@ object FixedPointUtils {
     clampedValue
   }
   
-  // Helper function to convert fixed point to double (for SInt values)
   def fixedPointToDouble(value: BigInt, width: Int, binaryPoint: Int): Double = {
     val scaleFactor = math.pow(2, binaryPoint)
-    // For SInt, peekInt() already returns the signed value
     value.toDouble / scaleFactor
   }
 }
