@@ -104,7 +104,7 @@ class ButterflyNSpec extends AnyFlatSpec with ChiselScalatestTester {
   "ButterflyNSpec" should "match Python NumPy FFT results for 16-point FFT" in { // need larger precision to prevent error accumulation
     testFFTWithSize(16, 32, 16, 10)
   }
-  
+
   
 }
 

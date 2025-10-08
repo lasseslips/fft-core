@@ -15,43 +15,38 @@ class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int) extends Modul
     })
 
     val halfN = n / 2
+
+    // First stage
+    val butterflyS1 = VecInit(Seq.fill(halfN)(Module(new Butterfly(width, binaryPoint)).io))
+    for (i <- 0 until halfN) {
+        val angle = -2.0 * Pi * i / n
+        val cosVal = cos(angle)
+        val sinVal = sin(angle)
+        val twiddleReal = FixedPointUtils.doubleToFixedPoint(cosVal, width, binaryPoint).S
+        val twiddleImag = FixedPointUtils.doubleToFixedPoint(sinVal, width, binaryPoint).S
+        butterflyS1(i).in0 := io.in(i)
+        butterflyS1(i).in1 := io.in(i + halfN)
+        butterflyS1(i).twiddle.real := twiddleReal
+        butterflyS1(i).twiddle.imag := twiddleImag
+    }
     if (n == 2) {
-        // Base case
-        val butterfly = Module(new Butterfly2(width, binaryPoint))
-        butterfly.io.in0 := io.in(0)
-        butterfly.io.in1 := io.in(1)
-        io.out(0) := butterfly.io.out0
-        io.out(1) := butterfly.io.out1
+        // For N=2, directly connect outputs as there's no further stage
+        io.out(0) := butterflyS1(0).out0
+        io.out(1) := butterflyS1(0).out1
     } else {
-        val butterfly1 = VecInit(Seq.fill(halfN)(Module(new Butterfly(width, binaryPoint)).io))
+        // Second stage: two halfN-point FFTs
+        val butterflyS2 = VecInit(Seq.fill(2)(Module(new ButterflyN(halfN, width, binaryPoint)).io))
 
+        
         for (i <- 0 until halfN) {
-            val angle = -2.0 * Pi * i / n
-            val cosVal = cos(angle)
-            val sinVal = sin(angle)
-            val twiddleReal = FixedPointUtils.doubleToFixedPoint(cosVal, width, binaryPoint).S
-            val twiddleImag = FixedPointUtils.doubleToFixedPoint(sinVal, width, binaryPoint).S
-
-            butterfly1(i).in0 := io.in(i)
-            butterfly1(i).in1 := io.in(i + halfN )
-            butterfly1(i).twiddle.real := twiddleReal
-            butterfly1(i).twiddle.imag := twiddleImag
-        }
-
-        // Second stage: two 4-point FFTs
-        val butterfly00 = Module(new ButterflyN(halfN, width, binaryPoint))
-        val butterfly01 = Module(new ButterflyN(halfN, width, binaryPoint))
-
-        // Connect the first halfN-point FFT (even outputs)
-        for (i <- 0 until halfN) {
-            butterfly00.io.in(i) := butterfly1(i).out0
-            butterfly01.io.in(i) := butterfly1(i).out1
+            butterflyS2(0).in(i) := butterflyS1(i).out0
+            butterflyS2(1).in(i) := butterflyS1(i).out1
         }
 
         // Connect outputs
         for (i <- 0 until halfN) {
-            io.out(2*i) := butterfly00.io.out(i)
-            io.out(2*i + 1) := butterfly01.io.out(i)
+            io.out(2*i) := butterflyS2(0).out(i)
+            io.out(2*i + 1) := butterflyS2(1).out(i)
         }
     }
 }

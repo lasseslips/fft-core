@@ -40,7 +40,7 @@ object ComplexFixedPoint {
         bd := a.imag.asSInt * b.imag.asSInt
         ad := a.real.asSInt * b.imag.asSInt
         bc := a.imag.asSInt * b.real.asSInt
-        
+
         // Scale down for fixed point arithmetic
         out.real := (ac - bd) >> a.binaryPoint
         out.imag := (ad + bc) >> a.binaryPoint
