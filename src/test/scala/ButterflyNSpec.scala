@@ -2,11 +2,11 @@ import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import scala.math._
-/*
-class FFTCalculatorSpec extends AnyFlatSpec with ChiselScalatestTester {
+
+class ButterflyNSpec extends AnyFlatSpec with ChiselScalatestTester {
   
   def testFFTWithSize(n: Int, width: Int, binaryPoint: Int, numTests: Int = 10): Unit = {
-    test(new FFTCalculator(n, width, binaryPoint)) { dut =>
+    test(new ButterflyN(n, width, binaryPoint)) { dut =>
       println(s"Testing ${n}-point FFT against Python NumPy FFT (if Python available)")
       
       if (PythonFFTVerifier.isPythonAvailable) {
@@ -89,25 +89,22 @@ class FFTCalculatorSpec extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
 
- "FFTCalculator" should "match Python NumPy FFT results for 2-point FFT" in {
+ "ButterflyNSpec" should "match Python NumPy FFT results for 2-point FFT" in {
     testFFTWithSize(2, 16, 8, 10)
   }
-  /* 
-  "FFTCalculator" should "match Python NumPy FFT results for 4-point FFT" in {
+  
+  "ButterflyNSpec" should "match Python NumPy FFT results for 4-point FFT" in {
     testFFTWithSize(4, 16, 8, 10)
   }
-  */
   
-  /*
-  "FFTCalculator" should "match Python NumPy FFT results for 8-point FFT" in {
-    testFFTWithSize(8, 16, 8, 5)
+  "ButterflyNSpec" should "match Python NumPy FFT results for 8-point FFT" in {
+    testFFTWithSize(8, 16, 8, 10)
   }
   
-  "FFTCalculator" should "match Python NumPy FFT results for 16-point FFT" in {
-    testFFTWithSize(16, 16, 8, 3)
+  "ButterflyNSpec" should "match Python NumPy FFT results for 16-point FFT" in { // need larger precision to prevent error accumulation
+    testFFTWithSize(16, 32, 16, 10)
   }
-  */
+  
   
 }
 
-*/
