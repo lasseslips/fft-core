@@ -2,7 +2,7 @@ import chisel3._
 import chisel3.util._
 import scala.math._
 
-class ButterflyNExternal(val n: Int, val width: Int, val binaryPoint: Int) extends Module {
+class ButterflyNExternal(val n: Int, val width: Int, val binaryPoint: Int, val pipeline: Boolean = false) extends Module {
     def isPow2(x: Int): Boolean = (x & (x - 1)) == 0
     require(n >= 2 && isPow2(n), "N must be a power of 2 and >= 2")
     
@@ -21,7 +21,7 @@ class ButterflyNExternal(val n: Int, val width: Int, val binaryPoint: Int) exten
     })
 
     // First stage butterflies
-    val butterflyS1 = VecInit(Seq.fill(halfN)(Module(new Butterfly(width, binaryPoint)).io))
+    val butterflyS1 = VecInit(Seq.fill(halfN)(Module(new Butterfly(width, binaryPoint, pipeline)).io))
     
     // Connect first stage butterflies
     for (i <- 0 until halfN) {
@@ -36,7 +36,7 @@ class ButterflyNExternal(val n: Int, val width: Int, val binaryPoint: Int) exten
         io.out(1) := butterflyS1(0).out1
     } else {
         // Second stage: two halfN-point FFTs
-        val butterflyS2 = VecInit(Seq.fill(2)(Module(new ButterflyNExternal(halfN, width, binaryPoint)).io))
+        val butterflyS2 = VecInit(Seq.fill(2)(Module(new ButterflyNExternal(halfN, width, binaryPoint, pipeline)).io))
 
         // Calculate twiddle factor distribution for recursive calls
         val recursiveTwiddleCount = ButterflyNExternalUtils.calcTwiddleCount(halfN)
@@ -61,7 +61,7 @@ class ButterflyNExternal(val n: Int, val width: Int, val binaryPoint: Int) exten
     }
 }
 
-// Helper object for twiddle factor calculations
+// Helper object for twidgdle factor calculations
 object ButterflyNExternalUtils {
     def calcTwiddleCount(size: Int): Int = {
         if (size == 2) size / 2

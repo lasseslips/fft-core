@@ -1,7 +1,7 @@
 import chisel3._
 import chisel3.util._
 
-class Butterfly4(val width: Int, val binaryPoint: Int) extends Module {
+class Butterfly4(val width: Int, val binaryPoint: Int, val pipeline: Boolean = false) extends Module {
     val io = IO(new Bundle {
         // Input complex numbers
         val in = Input(Vec(4, new ComplexFixedPoint.Complex(width, binaryPoint)))
@@ -10,8 +10,8 @@ class Butterfly4(val width: Int, val binaryPoint: Int) extends Module {
     })
 
     // Implement proper 4-point FFT using decimation-in-time
-    val butterfly10 = Module(new Butterfly(width, binaryPoint))
-    val butterfly11 = Module(new Butterfly(width, binaryPoint))
+    val butterfly10 = Module(new Butterfly(width, binaryPoint, pipeline))
+    val butterfly11 = Module(new Butterfly(width, binaryPoint, pipeline))
 
     butterfly10.io.in0 := io.in(0)
     butterfly10.io.in1 := io.in(2)
@@ -22,9 +22,9 @@ class Butterfly4(val width: Int, val binaryPoint: Int) extends Module {
     butterfly11.io.in1 := io.in(3)
     butterfly11.io.twiddle.real := 0.S                   // W_4^1 = -j
     butterfly11.io.twiddle.imag := (-1 * (1 << binaryPoint)).S
-    
-    val butterfly00 = Module(new Butterfly2(width, binaryPoint))
-    val butterfly01 = Module(new Butterfly2(width, binaryPoint))
+
+    val butterfly00 = Module(new Butterfly2(width, binaryPoint, pipeline))
+    val butterfly01 = Module(new Butterfly2(width, binaryPoint, pipeline))
 
     butterfly00.io.in0 := butterfly10.io.out0
     butterfly00.io.in1 := butterfly11.io.out0

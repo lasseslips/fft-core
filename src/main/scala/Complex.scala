@@ -25,7 +25,9 @@ object ComplexFixedPoint {
         out
     }
 
-    // Complex Multiplier, TODO look at pipelining 
+    // Complex Multiplier
+    // TODO: Look at https://docs.amd.com/v/u/en-US/ug479_7Series_DSP48E1 and see how we can best map to DSP slices
+    // 
     def mul(a: Complex, b: Complex): Complex = {
         val out = Wire(new Complex(a.w, a.binaryPoint))
         // (a + jb) * (c + jd) = (ac - bd) + j(ad + bc)

@@ -5,5 +5,5 @@ import chisel3._
  */
 object Main extends App {
   println("I will now generate the Verilog file!")
-  emitVerilog(new ButterflyN(16, 32, 16), Array("--target-dir", "verilog"))
+  emitVerilog(new ButterflyN(16, 32, 16, true), Array("--target-dir", "verilog"))
 }

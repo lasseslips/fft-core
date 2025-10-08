@@ -1,7 +1,7 @@
 import chisel3._
 import chisel3.util._
 
-class Butterfly(val width: Int, val binaryPoint: Int) extends Module {
+class Butterfly(val width: Int, val binaryPoint: Int, val pipeline: Boolean = false) extends Module {
     val io = IO(new Bundle {
         // Input complex numbers
         val in0 = Input(new ComplexFixedPoint.Complex(width, binaryPoint))
@@ -24,6 +24,12 @@ class Butterfly(val width: Int, val binaryPoint: Int) extends Module {
     val diff = ComplexFixedPoint.sub(io.in0, io.in1)
     
     // Apply twiddle factor to the difference
-    io.out0 := sum
-    io.out1 := ComplexFixedPoint.mul(diff, io.twiddle)
+    if (pipeline) {
+        io.out0 := RegNext(sum)
+        io.out1 := RegNext(ComplexFixedPoint.mul(diff, io.twiddle))
+    } else {
+        io.out0 := sum
+        io.out1 := ComplexFixedPoint.mul(diff, io.twiddle)
+    }
+
 }

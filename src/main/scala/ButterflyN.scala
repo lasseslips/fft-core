@@ -2,7 +2,7 @@ import chisel3._
 import chisel3.util._
 import scala.math._
 
-class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int) extends Module {
+class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int, val pipeline: Boolean = false) extends Module {
     def isPow2(x: Int): Boolean = (x & (x - 1)) == 0
     require(n >= 2 && isPow2(n), "N must be a power of 2 and >= 2")
     
@@ -17,7 +17,7 @@ class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int) extends Modul
     val halfN = n / 2
 
     // First stage
-    val butterflyS1 = VecInit(Seq.fill(halfN)(Module(new Butterfly(width, binaryPoint)).io))
+    val butterflyS1 = VecInit(Seq.fill(halfN)(Module(new Butterfly(width, binaryPoint, pipeline)).io))
     for (i <- 0 until halfN) {
         val angle = -2.0 * Pi * i / n
         val cosVal = cos(angle)
@@ -35,7 +35,7 @@ class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int) extends Modul
         io.out(1) := butterflyS1(0).out1
     } else {
         // Second stage: two halfN-point FFTs
-        val butterflyS2 = VecInit(Seq.fill(2)(Module(new ButterflyN(halfN, width, binaryPoint)).io))
+        val butterflyS2 = VecInit(Seq.fill(2)(Module(new ButterflyN(halfN, width, binaryPoint, pipeline)).io))
 
         
         for (i <- 0 until halfN) {
