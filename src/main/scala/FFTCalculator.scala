@@ -2,7 +2,7 @@ import chisel3._
 import chisel3.util._
 import scala.math._
 
-
+/*
 class FFTCalculator(val n: Int, val width: Int, val binaryPoint: Int) extends Module {
     val io = IO(new Bundle {
         // Input complex numbers
@@ -28,3 +28,4 @@ class FFTCalculator(val n: Int, val width: Int, val binaryPoint: Int) extends Mo
     
     io.out := butterflyN.io.out
 }
+*/

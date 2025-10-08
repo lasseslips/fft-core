@@ -1,7 +1,7 @@
 import chisel3._
 import chisel3.util._
 import scala.math._
-
+/*
 class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int) extends Module {
     require(n >= 2 && isPow2(n), "N must be a power of 2 and >= 2")
     val numTwiddles = OtherUtils.calculateNumberOfTwiddles(n)
@@ -64,3 +64,4 @@ class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int) extends Modul
     }
 }
 
+*/

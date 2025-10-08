@@ -1,6 +1,6 @@
 import scala.math._
 
-object Butterfly2GoldenModel {
+object ButterflyGoldenModel {
 
   // Golden model for butterfly computation
   def butterflyGoldenModel(in0_real: Double, in0_imag: Double, 

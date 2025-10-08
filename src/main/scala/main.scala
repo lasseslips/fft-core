@@ -5,5 +5,5 @@ import chisel3._
  */
 object Main extends App {
   println("I will now generate the Verilog file!")
-  emitVerilog(new FFTCalculator(32, 16, 8))
+  emitVerilog(new Butterfly8(32, 16))
 }

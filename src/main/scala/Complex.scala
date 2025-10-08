@@ -29,10 +29,18 @@ object ComplexFixedPoint {
     def mul(a: Complex, b: Complex): Complex = {
         val out = Wire(new Complex(a.w, a.binaryPoint))
         // (a + jb) * (c + jd) = (ac - bd) + j(ad + bc)
-        val ac = a.real * b.real
-        val bd = a.imag * b.imag
-        val ad = a.real * b.imag
-        val bc = a.imag * b.real
+        val doubleWidth = a.w * 2
+        // Intermediate values to avoid overflow
+        val ac = Wire(SInt(doubleWidth.W))
+        val bd = Wire(SInt(doubleWidth.W))
+        val ad = Wire(SInt(doubleWidth.W))
+        val bc = Wire(SInt(doubleWidth.W))
+
+        ac := a.real.asSInt * b.real.asSInt
+        bd := a.imag.asSInt * b.imag.asSInt
+        ad := a.real.asSInt * b.imag.asSInt
+        bc := a.imag.asSInt * b.real.asSInt
+        
         // Scale down for fixed point arithmetic
         out.real := (ac - bd) >> a.binaryPoint
         out.imag := (ad + bc) >> a.binaryPoint

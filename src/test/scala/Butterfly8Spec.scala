@@ -2,38 +2,39 @@ import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import scala.math._
-/*
-class FFTCalculatorSpec extends AnyFlatSpec with ChiselScalatestTester {
-  
-  def testFFTWithSize(n: Int, width: Int, binaryPoint: Int, numTests: Int = 10): Unit = {
-    test(new FFTCalculator(n, width, binaryPoint)) { dut =>
-      println(s"Testing ${n}-point FFT against Python NumPy FFT (if Python available)")
+
+class Butterfly8Spec extends AnyFlatSpec with ChiselScalatestTester {
+
+  "Butterfly8" should "match Python NumPy FFT results for 8-point FFT" in {
+    test(new Butterfly8(16, 8)) { dut =>
+      println("Testing Butterfly8 against Python NumPy 8-point FFT (if Python available)")
       
       if (PythonFFTVerifier.isPythonAvailable) {
         println("Python / NumPy detected - running FFT tests")
         
+        val numTests = 10 
         val random = new scala.util.Random(42)
         val tolerance = 0.01
         
         for (testNum <- 1 to numTests) {
-          println(f"\n--- Random Test Case $testNum/$numTests for ${n}-point FFT ---")
+          println(f"\n--- Random Test Case $testNum/$numTests for 8-point Butterfly8 ---")
           
-          // Generate random N-point input
-          val inputs = for (i <- 0 until n) yield {
+          // Generate random 8-point input
+          val inputs = for (i <- 0 until 8) yield {
             val real = (random.nextDouble() - 0.5) * 2
             val imag = (random.nextDouble() - 0.5) * 2
             println(f"Input: x[$i] = $real%.3f + ${imag}%.3fj")
             (real, imag)
           }
           
-          // Get Python reference using N-point FFT
+          // Get Python reference using 8-point FFT
           PythonFFTVerifier.verifyNPointFFTWithPython(inputs) match {
-            case Some(pythonResult) if pythonResult.length == n =>
+            case Some(pythonResult) if pythonResult.length == 8 =>
               // Set hardware inputs
-              for (i <- 0 until n) {
+              for (i <- 0 until 8) {
                 val (real, imag) = inputs(i)
-                dut.io.in(i).real.poke(FixedPointUtils.doubleToFixedPoint(real, width, binaryPoint).S)
-                dut.io.in(i).imag.poke(FixedPointUtils.doubleToFixedPoint(imag, width, binaryPoint).S)
+                dut.io.in(i).real.poke(FixedPointUtils.doubleToFixedPoint(real, 16, 8).S)
+                dut.io.in(i).imag.poke(FixedPointUtils.doubleToFixedPoint(imag, 16, 8).S)
               }
 
               dut.clock.step(1)
@@ -41,9 +42,9 @@ class FFTCalculatorSpec extends AnyFlatSpec with ChiselScalatestTester {
               // Get hardware outputs and compare with Python results
               val errors = scala.collection.mutable.ListBuffer[(String, Double, Double, Double)]()
               
-              for (i <- 0 until n) {
-                val act_real = FixedPointUtils.fixedPointToDouble(dut.io.out(i).real.peekInt(), width, binaryPoint)
-                val act_imag = FixedPointUtils.fixedPointToDouble(dut.io.out(i).imag.peekInt(), width, binaryPoint)
+              for (i <- 0 until 8) {
+                val act_real = FixedPointUtils.fixedPointToDouble(dut.io.out(i).real.peekInt(), 16, 8)
+                val act_imag = FixedPointUtils.fixedPointToDouble(dut.io.out(i).imag.peekInt(), 16, 8)
                 val (python_real, python_imag) = pythonResult(i)
                 
                 val real_error = abs(act_real - python_real)
@@ -55,7 +56,7 @@ class FFTCalculatorSpec extends AnyFlatSpec with ChiselScalatestTester {
               
               val errorList = errors.toList
               val maxError = errorList.map(_._4).max
-              println(f"Max error: $maxError%.6f (tolerance: $tolerance%.6f)")
+              println(f"Max error: $maxError%.6f (tolerance: $tolerance)")
               
               errorList.foreach { case (name, hw, py, err) =>
                 val status = if (err < tolerance) "PASS" else "FAIL"
@@ -71,8 +72,8 @@ class FFTCalculatorSpec extends AnyFlatSpec with ChiselScalatestTester {
               println(s"Test case $testNum passed!")
               
             case Some(pythonResult) =>
-              println(s"Python verification returned unexpected result length: ${pythonResult.length}, expected $n")
-              fail(s"Test case $testNum/$numTests FAILED: Python FFT returned ${pythonResult.length} results instead of $n")
+              println(s"Python verification returned unexpected result length: ${pythonResult.length}, expected 8")
+              fail(s"Test case $testNum/$numTests FAILED: Python FFT returned ${pythonResult.length} results instead of 8")
               
             case None =>
               println("Python verification failed - could not get results")
@@ -80,7 +81,7 @@ class FFTCalculatorSpec extends AnyFlatSpec with ChiselScalatestTester {
           }
         }
         
-        println(f"\nAll $numTests random test cases passed for ${n}-point FFT!")
+        println(f"\nAll $numTests random test cases passed for Butterfly8!")
         
       } else {
         println("Python / NumPy not available - skipping this test")
@@ -88,26 +89,4 @@ class FFTCalculatorSpec extends AnyFlatSpec with ChiselScalatestTester {
       }
     }
   }
-
- "FFTCalculator" should "match Python NumPy FFT results for 2-point FFT" in {
-    testFFTWithSize(2, 16, 8, 10)
-  }
-  /* 
-  "FFTCalculator" should "match Python NumPy FFT results for 4-point FFT" in {
-    testFFTWithSize(4, 16, 8, 10)
-  }
-  */
-  
-  /*
-  "FFTCalculator" should "match Python NumPy FFT results for 8-point FFT" in {
-    testFFTWithSize(8, 16, 8, 5)
-  }
-  
-  "FFTCalculator" should "match Python NumPy FFT results for 16-point FFT" in {
-    testFFTWithSize(16, 16, 8, 3)
-  }
-  */
-  
 }
-
-*/

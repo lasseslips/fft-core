@@ -3,10 +3,10 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import scala.math._
 
-class Butterfly2Spec extends AnyFlatSpec with ChiselScalatestTester {
+class ButterflySpec extends AnyFlatSpec with ChiselScalatestTester {
 
-  "Butterfly2" should "compute basic butterfly operation correctly" in {
-    test(new Butterfly2(16, 8)) { dut =>
+  "Butterfly" should "compute basic butterfly operation correctly" in {
+    test(new Butterfly(16, 8)) { dut =>
       println("Testing basic butterfly operation")
       
       // Test case 1: Simple real inputs
@@ -26,7 +26,7 @@ class Butterfly2Spec extends AnyFlatSpec with ChiselScalatestTester {
       
       // Compute golden model
       val ((exp_out0_r, exp_out0_j), (exp_out1_r, exp_out1_j)) = 
-        Butterfly2GoldenModel.butterflyGoldenModel(in0_r, in0_j, in1_r, in1_j, tw_r, tw_j)
+        ButterflyGoldenModel.butterflyGoldenModel(in0_r, in0_j, in1_r, in1_j, tw_r, tw_j)
       
       // Get actual outputs and convert back to double
       val act_out0_r = FixedPointUtils.fixedPointToDouble(dut.io.out0.real.peekInt(), 16, 8)
@@ -45,8 +45,8 @@ class Butterfly2Spec extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
   
-  "Butterfly2" should "handle complex twiddle factors" in {
-    test(new Butterfly2(16, 8)) { dut =>
+  "Butterfly" should "handle complex twiddle factors" in {
+    test(new Butterfly(16, 8)) { dut =>
       println("Testing with complex twiddle factors")
       
       // Test case 2: Complex inputs with -j twiddle (90° rotation)
@@ -66,7 +66,7 @@ class Butterfly2Spec extends AnyFlatSpec with ChiselScalatestTester {
       
       // Compute golden model
       val ((exp_out0_r, exp_out0_j), (exp_out1_r, exp_out1_j)) = 
-        Butterfly2GoldenModel.butterflyGoldenModel(in0_r, in0_j, in1_r, in1_j, tw_r, tw_j)
+        ButterflyGoldenModel.butterflyGoldenModel(in0_r, in0_j, in1_r, in1_j, tw_r, tw_j)
       
       // Get actual outputs
       val act_out0_r = FixedPointUtils.fixedPointToDouble(dut.io.out0.real.peekInt(), 16, 8)
@@ -84,8 +84,8 @@ class Butterfly2Spec extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
   
-  "Butterfly2" should "handle edge cases" in {
-    test(new Butterfly2(16, 8)) { dut =>
+  "Butterfly" should "handle edge cases" in {
+    test(new Butterfly(16, 8)) { dut =>
       println("Testing edge cases")
       
       // Test case 3: Zero inputs
@@ -118,8 +118,8 @@ class Butterfly2Spec extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
   
-  "Butterfly2" should "verify multiple random test vectors" in {
-    test(new Butterfly2(16, 8)) { dut =>
+  "Butterfly" should "verify multiple random test vectors" in {
+    test(new Butterfly(16, 8)) { dut =>
       println("Testing with random vectors")
       
       val random = new scala.util.Random(42) 
@@ -146,7 +146,7 @@ class Butterfly2Spec extends AnyFlatSpec with ChiselScalatestTester {
         
         // Compute golden model
         val ((exp_out0_r, exp_out0_j), (exp_out1_r, exp_out1_j)) = 
-          Butterfly2GoldenModel.butterflyGoldenModel(in0_r, in0_j, in1_r, in1_j, tw_r, tw_j)
+          ButterflyGoldenModel.butterflyGoldenModel(in0_r, in0_j, in1_r, in1_j, tw_r, tw_j)
         
         // Get actual outputs
         val act_out0_r = FixedPointUtils.fixedPointToDouble(dut.io.out0.real.peekInt(), 16, 8)
@@ -169,8 +169,8 @@ class Butterfly2Spec extends AnyFlatSpec with ChiselScalatestTester {
     }
   }
   
-  "Butterfly2" should "match Python NumPy FFT results (if Python available)" in {
-    test(new Butterfly2(16, 8)) { dut =>
+  "Butterfly" should "match Python NumPy FFT results (if Python available)" in {
+    test(new Butterfly(16, 8)) { dut =>
       println("Testing against Python NumPy FFT (if available)")
       
       if (PythonFFTVerifier.isPythonAvailable) {
