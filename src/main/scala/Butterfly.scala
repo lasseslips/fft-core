@@ -18,16 +18,15 @@ class Butterfly(val width: Int, val binaryPoint: Int, val pipeline: Boolean = fa
     // Butterfly computation (DIT radix-2):
     // out0 = in0 + in1
     // out1 = (in0 - in1) * twiddle
-    
-    // First perform addition and subtraction
-    val sum = ComplexFixedPoint.add(io.in0, io.in1)
-    val diff = ComplexFixedPoint.sub(io.in0, io.in1)
-    
-    // Apply twiddle factor to the difference
+
     if (pipeline) {
+        val sum = RegNext(ComplexFixedPoint.add(io.in0, io.in1))
+        val diff = RegNext(ComplexFixedPoint.sub(io.in0, io.in1))
         io.out0 := RegNext(sum)
         io.out1 := RegNext(ComplexFixedPoint.mul(diff, io.twiddle))
     } else {
+        val sum = ComplexFixedPoint.add(io.in0, io.in1)
+        val diff = ComplexFixedPoint.sub(io.in0, io.in1)
         io.out0 := sum
         io.out1 := ComplexFixedPoint.mul(diff, io.twiddle)
     }

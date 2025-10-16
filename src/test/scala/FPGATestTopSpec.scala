@@ -8,8 +8,9 @@ class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
         test(new FPGATestTop(fftSize, width, binaryPoint, pipeline, testCases)) { dut =>
             println(s"Testing FPGATestTop with ${fftSize}-point FFT and ${testCases.length} test cases")
 
-            val latency = if (pipeline) (math.log(fftSize) / math.log(2)).toInt else 0
-            val totalCycles = latency + 5 // Extra cycles for control and comparison (TODO: verify exact number needed)
+            val latency = ButterflyNUtils.getLatency(fftSize, pipeline)
+            val totalCycles = latency + 4 // Extra cycles for control and comparison
+            println(s"Expected FFT latency: $latency cycles, total test cycle budget: $totalCycles cycles")
             val passStatus = scala.collection.mutable.ArrayBuffer.fill(testCases.length)(false)
             var cycle = 0
             for (i <- 0 until testCases.length) {
@@ -20,10 +21,10 @@ class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
                 while (!dut.io.testComplete.peek().litToBoolean) {
                     dut.clock.step(1)
                     cycle += 1
-                    assert(cycle < totalCycles, s"Test did not complete in expected time for test case $i")
+                    assert(cycle <= totalCycles, s"Test did not complete in expected time for test case $i")
                 }
                 println(s"Test completed in $cycle cycles")
-                assert(cycle >= latency, s"Test $i completed too quickly, expected at least $latency cycles for FFT processing")
+                assert(cycle == totalCycles, s"Test $i completed too quickly, expected exactly $totalCycles cycles for FFT processing and control")
                 // Check LEDs for pass/fail indication
                 val pass = dut.io.ledPass.peek().litToBoolean
                 val fail = dut.io.ledFail.peek().litToBoolean
@@ -106,4 +107,5 @@ class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
         )
         testWithFFTSize(fftSize, width, binaryPoint, pipeline, testCases)
     }
+
 }

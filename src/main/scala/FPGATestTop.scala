@@ -54,17 +54,23 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
     // FFT core instance
     val fftCore = Module(new ButterflyN(fftSize, width, binaryPoint, pipeline))
 
+    // Assign twiddle factors
+    val totalTwiddleCount = ButterflyNUtils.calcTwiddleCount(fftSize)
+    val twiddlesInt = ButterflyNUtils.generateTwiddleFactors(fftSize)
+    val twiddles = ButterflyNUtils.twiddlesToFixedPoint(twiddlesInt, width, binaryPoint)
+    for (i <- 0 until totalTwiddleCount) {
+        fftCore.io.twiddles(i).real := twiddles(i)._1.S
+        fftCore.io.twiddles(i).imag := twiddles(i)._2.S
+    }
+
     val comparators = Seq.tabulate(fftSize) { i =>
         Module(new Comparator(width, binaryPoint, testCases(0).tolerance, pipeline)) // Use tolerance from first test case (should be same for all)
     }
     
     // Calculate expected latency based on pipeline configuration
     // For pipelined version, each butterfly stage adds 1 cycle delay
-    val fftLatency = if (pipeline) {
-        log2Ceil(fftSize).U  // log2(N) stages for radix-2 FFT
-    } else {
-        1.U  // Combinational, only 1 cycle for output registration
-    }
+    val fftLatency = ButterflyNUtils.getLatency(fftSize, pipeline).U
+
     
     // Counter for indexing test cases
     val currentTestIndex = RegInit(0.U(log2Ceil(testCases.size).W))
