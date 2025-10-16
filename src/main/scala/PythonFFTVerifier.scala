@@ -32,7 +32,7 @@ object PythonFFTVerifier {
         |    print(f'X{k}_imag={X[k].imag:.15f}')
         |""".stripMargin
       
-      val pythonCommand = s"""python -c "$scriptContent""""
+      val pythonCommand = s"""python3 -c "$scriptContent""""
       val result = pythonCommand.!!
       
       val lines = result.split('\n')
@@ -66,7 +66,7 @@ object PythonFFTVerifier {
   // Check if Python with NumPy is available
   def isPythonAvailable: Boolean = {
     try {
-      "python -c \"import numpy; print('Python NumPy OK')\"".!!
+      "python3 -c \"import numpy; print('Python NumPy OK')\"".!!
       true
     } catch {
       case _: Exception => false
