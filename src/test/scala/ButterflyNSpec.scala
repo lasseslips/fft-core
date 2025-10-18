@@ -10,11 +10,11 @@ class ButterflyNSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   def testFFTWithSize(n: Int, width: Int, binaryPoint: Int, numTests: Int = 5, pipeline: Boolean = false): Unit = {
     test(new ButterflyN(n, width, binaryPoint, pipeline)) { dut =>
-      println(s"Testing ${n}-point FFT against original ButterflyN and Python NumPy FFT")
+      println(s"Testing ${n}-point FFT against original ButterflyN and Scala Breeze FFT")
 
-      if (PythonFFTVerifier.isPythonAvailable) {
-        println("Python / NumPy detected - running FFT tests")
-        
+      if (ScalaFFTVerifier.isBreezeAvailable) {
+        println("Breeze detected - running FFT tests")
+
         val random = new scala.util.Random(42)
         val tolerance = 0.01
         val latency = ButterflyNUtils.getLatency(n, pipeline)
@@ -33,7 +33,7 @@ class ButterflyNSpec extends AnyFlatSpec with ChiselScalatestTester {
 
         val inputsBuffer = scala.collection.mutable.ListBuffer[Seq[(Double, Double)]]()
         val outputsBuffer = scala.collection.mutable.ListBuffer[Seq[(Double, Double)]]()
-        val pythonResults = scala.collection.mutable.ListBuffer[Seq[(Double, Double)]]()
+        val breezeResults = scala.collection.mutable.ListBuffer[Seq[(Double, Double)]]()
 
         // Generate inputs to test
         for (testNum <- 1 to numTests) {
@@ -45,19 +45,18 @@ class ButterflyNSpec extends AnyFlatSpec with ChiselScalatestTester {
           inputsBuffer += inputs
         }
 
-        // Get Python reference using N-point FFT
+        // Get Breeze reference using N-point FFT
         for (testNum <- 0 until numTests) {
           val inputs = inputsBuffer(testNum)
-          PythonFFTVerifier.verifyNPointFFTWithPython(inputs) match {
-            case Some(pythonResult) if pythonResult.length == n =>
-              pythonResults += pythonResult
-            case Some(pythonResult) =>
-              println("Error: Python FFT did not return expected number of results, expected length: " + n + " but got " + 
-                      (if (pythonResult != null) pythonResult.length.toString else "null"))
-              fail("Python FFT error")
+          ScalaFFTVerifier.verifyNPointFFT(inputs) match {
+            case Some(breezeResult) if breezeResult.length == n =>
+              breezeResults += breezeResult
+            case Some(breezeResult) =>
+              println(s"Error: Breeze FFT did not return expected number of results, expected $n but got ${breezeResult.length}")
+              fail("Breeze FFT error")
             case _ =>
-              println("Error: Python FFT did not return any results")
-              fail("Python FFT error")
+              println("Error: Breeze FFT did not return any results")
+              fail("Breeze FFT error")
           }
         }
         println(s"Running ${numTests} tests with ${n}-point ButterflyNExternal (latency: $latency cycles)\n\n")
@@ -82,7 +81,7 @@ class ButterflyNSpec extends AnyFlatSpec with ChiselScalatestTester {
           }
           println(s"Outputs at cycle $testNum: ${genNumStr(currentOutputs)}")
           if (testNum >= latency) {
-            println(s"Expected Result ${testNum - latency} (Python): ${genNumStr(pythonResults(testNum - latency))}")
+            println(s"Expected Result ${testNum - latency} (Breeze): ${genNumStr(breezeResults(testNum - latency))}")
           }
           outputsBuffer += currentOutputs
           dut.clock.step(1)
@@ -104,86 +103,84 @@ class ButterflyNSpec extends AnyFlatSpec with ChiselScalatestTester {
           }
           println(s"Outputs at cycle ${numTests + flushCycle}: ${genNumStr(currentOutputs)}")
           if (numTests + flushCycle >= latency) {
-            println(s"Expected Result ${numTests + flushCycle - latency} (Python): ${genNumStr(pythonResults(numTests + flushCycle - latency))}")
+            println(s"Expected Result ${numTests + flushCycle - latency} (Breeze): ${genNumStr(breezeResults(numTests + flushCycle - latency))}")
           }
           outputsBuffer += currentOutputs
           dut.clock.step(1)
           println()
         }
 
-        // Compare hardware outputs with Python results
+        // Compare hardware vs Breeze results
         for (testNum <- 0 until numTests) {
           println(f"\n--- Test Case ${testNum + 1}/$numTests for ${n}-point ButterflyNExternal ---")
           val outputResults = outputsBuffer(testNum + latency)
-          val pythonResult = pythonResults(testNum)
+          val breezeResult = breezeResults(testNum)
           val errors = scala.collection.mutable.ListBuffer[(String, Double, Double, Double)]()
 
           for (i <- 0 until n) {
             val (act_real, act_imag) = outputResults(i)
-            val (python_real, python_imag) = pythonResult(i)
+            val (breeze_real, breeze_imag) = breezeResult(i)
 
-            val real_error = abs(act_real - python_real)
-            val imag_error = abs(act_imag - python_imag)
+            val real_error = abs(act_real - breeze_real)
+            val imag_error = abs(act_imag - breeze_imag)
 
-            errors += ((s"out$i.real", act_real, python_real, real_error))
-            errors += ((s"out$i.imag", act_imag, python_imag, imag_error))
+            errors += ((s"out$i.real", act_real, breeze_real, real_error))
+            errors += ((s"out$i.imag", act_imag, breeze_imag, imag_error))
           }
 
           val errorList = errors.toList
           val maxError = errorList.map(_._4).max
           println(f"Max error: $maxError%.6f (tolerance: $tolerance)")
 
-          errorList.foreach { case (name, hw, py, err) =>
+          errorList.foreach { case (name, hw, ref, err) =>
             val status = if (err < tolerance) "PASS" else "FAIL"
-            println(f"  $status $name: Python=$py%.6f, Hardware=$hw%.6f, Error=$err%.6f")
+            println(f"  $status $name: Breeze=$ref%.6f, Hardware=$hw%.6f, Error=$err%.6f")
           }
 
-          // Asserts to fail test if any error exceeds tolerance
-          for ((name, hw, py, err) <- errorList) {
-            assert(err < tolerance, 
-                   f"Test case ${testNum + 1}/$numTests FAILED on $name: Python=$py%.6f, Hardware=$hw%.6f, Error=$err%.6f > $tolerance")
+          // Fail if any exceed tolerance
+          for ((name, hw, ref, err) <- errorList) {
+            assert(err < tolerance,
+              f"Test case ${testNum + 1}/$numTests FAILED on $name: Breeze=$ref%.6f, Hardware=$hw%.6f, Error=$err%.6f > $tolerance")
           }
         }
       } else {
-        println("Python / NumPy not detected")
-        fail("Python / NumPy not available")
+        println("Breeze not detected")
+        fail("Breeze not available")
       }
     }
   }
 
 
 
-  
-  "ButterflyNSpec" should "match Python NumPy FFT results for 2-point FFT (non-pipelined)" in {
+  "ButterflyNSpec" should "match Breeze FFT results for 2-point FFT (non-pipelined)" in {
     testFFTWithSize(2, 16, 8, 5, false)
   }
 
-  "ButterflyNSpec" should "match Python NumPy FFT results for 4-point FFT (non-pipelined)" in {
+  "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT (non-pipelined)" in {
     testFFTWithSize(4, 16, 8, 5, false)
   }
 
-  "ButterflyNSpec" should "match Python NumPy FFT results for 8-point FFT (non-pipelined)" in {
+  "ButterflyNSpec" should "match Breeze FFT results for 8-point FFT (non-pipelined)" in {
     testFFTWithSize(8, 16, 8, 5, false)
   }
-  
 
-  "ButterflyNSpec" should "match Python NumPy FFT results for 16-point FFT (non-pipelined)" in {
+  "ButterflyNSpec" should "match Breeze FFT results for 16-point FFT (non-pipelined)" in {
     testFFTWithSize(16, 32, 16, 3, false)
   }
 
-  "ButterflyNSpec" should "match Python NumPy FFT results for 2-point FFT (pipelined)" in {
+  "ButterflyNSpec" should "match Breeze FFT results for 2-point FFT (pipelined)" in {
     testFFTWithSize(2, 16, 8, 5, true)
   }
 
-  "ButterflyNSpec" should "match Python NumPy FFT results for 4-point FFT (pipelined)" in {
+  "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT (pipelined)" in {
     testFFTWithSize(4, 16, 8, 5, true)
   }
 
-  "ButterflyNSpec" should "match Python NumPy FFT results for 8-point FFT (pipelined)" in {
+  "ButterflyNSpec" should "match Breeze FFT results for 8-point FFT (pipelined)" in {
     testFFTWithSize(8, 16, 8, 5, true)
   }
 
-  "ButterflyNSpec" should "match Python NumPy FFT results for 16-point FFT (pipelined)" in {
+  "ButterflyNSpec" should "match Breeze FFT results for 16-point FFT (pipelined)" in {
     testFFTWithSize(16, 32, 16, 3, true)
   }
 

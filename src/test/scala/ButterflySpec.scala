@@ -8,12 +8,12 @@ class ButterflySpec extends AnyFlatSpec with ChiselScalatestTester {
   "Butterfly" should "compute basic butterfly operation correctly" in {
     test(new Butterfly(16, 8)) { dut =>
       println("Testing basic butterfly operation")
-      
+
       // Test case 1: Simple real inputs
       val in0_r = 1.0; val in0_j = 0.0
       val in1_r = 0.5; val in1_j = 0.0
       val tw_r = 1.0; val tw_j = 0.0  // Twiddle = 1 (no rotation)
-      
+
       // Set inputs
       dut.io.in0.real.poke(FixedPointUtils.doubleToFixedPoint(in0_r, 16, 8).S)
       dut.io.in0.imag.poke(FixedPointUtils.doubleToFixedPoint(in0_j, 16, 8).S)
@@ -21,39 +21,39 @@ class ButterflySpec extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.in1.imag.poke(FixedPointUtils.doubleToFixedPoint(in1_j, 16, 8).S)
       dut.io.twiddle.real.poke(FixedPointUtils.doubleToFixedPoint(tw_r, 16, 8).S)
       dut.io.twiddle.imag.poke(FixedPointUtils.doubleToFixedPoint(tw_j, 16, 8).S)
-      
+
       dut.clock.step(1)
-      
+
       // Compute golden model
-      val ((exp_out0_r, exp_out0_j), (exp_out1_r, exp_out1_j)) = 
+      val ((exp_out0_r, exp_out0_j), (exp_out1_r, exp_out1_j)) =
         ButterflyGoldenModel.butterflyGoldenModel(in0_r, in0_j, in1_r, in1_j, tw_r, tw_j)
-      
+
       // Get actual outputs and convert back to double
       val act_out0_r = FixedPointUtils.fixedPointToDouble(dut.io.out0.real.peekInt(), 16, 8)
       val act_out0_j = FixedPointUtils.fixedPointToDouble(dut.io.out0.imag.peekInt(), 16, 8)
       val act_out1_r = FixedPointUtils.fixedPointToDouble(dut.io.out1.real.peekInt(), 16, 8)
       val act_out1_j = FixedPointUtils.fixedPointToDouble(dut.io.out1.imag.peekInt(), 16, 8)
-      
+
       // Verify with tolerance for fixed-point precision
       val tolerance = 0.01
       assert(abs(act_out0_r - exp_out0_r) < tolerance, s"out0.real: expected $exp_out0_r, got $act_out0_r")
       assert(abs(act_out0_j - exp_out0_j) < tolerance, s"out0.imag: expected $exp_out0_j, got $act_out0_j")
       assert(abs(act_out1_r - exp_out1_r) < tolerance, s"out1.real: expected $exp_out1_r, got $act_out1_r")
       assert(abs(act_out1_j - exp_out1_j) < tolerance, s"out1.imag: expected $exp_out1_j, got $act_out1_j")
-      
+
       println(f"Test 1 passed: out0=($act_out0_r%.3f, $act_out0_j%.3f), out1=($act_out1_r%.3f, $act_out1_j%.3f)")
     }
   }
-  
+
   "Butterfly" should "handle complex twiddle factors" in {
     test(new Butterfly(16, 8)) { dut =>
       println("Testing with complex twiddle factors")
-      
+
       // Test case 2: Complex inputs with -j twiddle (90° rotation)
       val in0_r = 1.0; val in0_j = 1.0
       val in1_r = 0.5; val in1_j = -0.5
       val tw_r = 0.0; val tw_j = -1.0  // Twiddle = -j
-      
+
       // Set inputs
       dut.io.in0.real.poke(FixedPointUtils.doubleToFixedPoint(in0_r, 16, 8).S)
       dut.io.in0.imag.poke(FixedPointUtils.doubleToFixedPoint(in0_j, 16, 8).S)
@@ -61,79 +61,79 @@ class ButterflySpec extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.in1.imag.poke(FixedPointUtils.doubleToFixedPoint(in1_j, 16, 8).S)
       dut.io.twiddle.real.poke(FixedPointUtils.doubleToFixedPoint(tw_r, 16, 8).S)
       dut.io.twiddle.imag.poke(FixedPointUtils.doubleToFixedPoint(tw_j, 16, 8).S)
-      
+
       dut.clock.step(1)
-      
+
       // Compute golden model
-      val ((exp_out0_r, exp_out0_j), (exp_out1_r, exp_out1_j)) = 
+      val ((exp_out0_r, exp_out0_j), (exp_out1_r, exp_out1_j)) =
         ButterflyGoldenModel.butterflyGoldenModel(in0_r, in0_j, in1_r, in1_j, tw_r, tw_j)
-      
+
       // Get actual outputs
       val act_out0_r = FixedPointUtils.fixedPointToDouble(dut.io.out0.real.peekInt(), 16, 8)
       val act_out0_j = FixedPointUtils.fixedPointToDouble(dut.io.out0.imag.peekInt(), 16, 8)
       val act_out1_r = FixedPointUtils.fixedPointToDouble(dut.io.out1.real.peekInt(), 16, 8)
       val act_out1_j = FixedPointUtils.fixedPointToDouble(dut.io.out1.imag.peekInt(), 16, 8)
-      
+
       val tolerance = 0.01
       assert(abs(act_out0_r - exp_out0_r) < tolerance, s"out0.real: expected $exp_out0_r, got $act_out0_r")
       assert(abs(act_out0_j - exp_out0_j) < tolerance, s"out0.imag: expected $exp_out0_j, got $act_out0_j")
       assert(abs(act_out1_r - exp_out1_r) < tolerance, s"out1.real: expected $exp_out1_r, got $act_out1_r")
       assert(abs(act_out1_j - exp_out1_j) < tolerance, s"out1.imag: expected $exp_out1_j, got $act_out1_j")
-      
+
       println(f"Test 2 passed: out0=($act_out0_r%.3f, $act_out0_j%.3f), out1=($act_out1_r%.3f, $act_out1_j%.3f)")
     }
   }
-  
+
   "Butterfly" should "handle edge cases" in {
     test(new Butterfly(16, 8)) { dut =>
       println("Testing edge cases")
-      
+
       // Test case 3: Zero inputs
       val in0_r = 0.0; val in0_j = 0.0
       val in1_r = 0.0; val in1_j = 0.0
       val tw_r = 0.707; val tw_j = 0.707  // 45° rotation
-      
+
       dut.io.in0.real.poke(FixedPointUtils.doubleToFixedPoint(in0_r, 16, 8).S)
       dut.io.in0.imag.poke(FixedPointUtils.doubleToFixedPoint(in0_j, 16, 8).S)
       dut.io.in1.real.poke(FixedPointUtils.doubleToFixedPoint(in1_r, 16, 8).S)
       dut.io.in1.imag.poke(FixedPointUtils.doubleToFixedPoint(in1_j, 16, 8).S)
       dut.io.twiddle.real.poke(FixedPointUtils.doubleToFixedPoint(tw_r, 16, 8).S)
       dut.io.twiddle.imag.poke(FixedPointUtils.doubleToFixedPoint(tw_j, 16, 8).S)
-      
+
       dut.clock.step(1)
-      
+
       // Should get all zeros
       val act_out0_r = FixedPointUtils.fixedPointToDouble(dut.io.out0.real.peekInt(), 16, 8)
       val act_out0_j = FixedPointUtils.fixedPointToDouble(dut.io.out0.imag.peekInt(), 16, 8)
       val act_out1_r = FixedPointUtils.fixedPointToDouble(dut.io.out1.real.peekInt(), 16, 8)
       val act_out1_j = FixedPointUtils.fixedPointToDouble(dut.io.out1.imag.peekInt(), 16, 8)
-      
+
       val tolerance = 0.01
       assert(abs(act_out0_r) < tolerance, s"out0.real should be ~0, got $act_out0_r")
       assert(abs(act_out0_j) < tolerance, s"out0.imag should be ~0, got $act_out0_j")
       assert(abs(act_out1_r) < tolerance, s"out1.real should be ~0, got $act_out1_r")
       assert(abs(act_out1_j) < tolerance, s"out1.imag should be ~0, got $act_out1_j")
-      
+
       println("Test 3 passed: Zero input handling")
     }
   }
-  
+
   "Butterfly" should "verify multiple random test vectors" in {
     test(new Butterfly(16, 8)) { dut =>
       println("Testing with random vectors")
-      
-      val random = new scala.util.Random(42) 
+
+      val random = new scala.util.Random(42)
       val tolerance = 0.02
       val numTests = 10
-      
+
       for (i <- 0 until numTests) {
         val in0_r = (random.nextDouble() - 0.5) * 2
-        val in0_j = (random.nextDouble() - 0.5) * 2  
+        val in0_j = (random.nextDouble() - 0.5) * 2
         val in1_r = (random.nextDouble() - 0.5) * 2
         val in1_j = (random.nextDouble() - 0.5) * 2
         val tw_r = (random.nextDouble() - 0.5) * 2
         val tw_j = (random.nextDouble() - 0.5) * 2
-        
+
         // Set inputs
         dut.io.in0.real.poke(FixedPointUtils.doubleToFixedPoint(in0_r, 16, 8).S)
         dut.io.in0.imag.poke(FixedPointUtils.doubleToFixedPoint(in0_j, 16, 8).S)
@@ -141,123 +141,123 @@ class ButterflySpec extends AnyFlatSpec with ChiselScalatestTester {
         dut.io.in1.imag.poke(FixedPointUtils.doubleToFixedPoint(in1_j, 16, 8).S)
         dut.io.twiddle.real.poke(FixedPointUtils.doubleToFixedPoint(tw_r, 16, 8).S)
         dut.io.twiddle.imag.poke(FixedPointUtils.doubleToFixedPoint(tw_j, 16, 8).S)
-        
+
         dut.clock.step(1)
-        
+
         // Compute golden model
-        val ((exp_out0_r, exp_out0_j), (exp_out1_r, exp_out1_j)) = 
+        val ((exp_out0_r, exp_out0_j), (exp_out1_r, exp_out1_j)) =
           ButterflyGoldenModel.butterflyGoldenModel(in0_r, in0_j, in1_r, in1_j, tw_r, tw_j)
-        
+
         // Get actual outputs
         val act_out0_r = FixedPointUtils.fixedPointToDouble(dut.io.out0.real.peekInt(), 16, 8)
         val act_out0_j = FixedPointUtils.fixedPointToDouble(dut.io.out0.imag.peekInt(), 16, 8)
         val act_out1_r = FixedPointUtils.fixedPointToDouble(dut.io.out1.real.peekInt(), 16, 8)
         val act_out1_j = FixedPointUtils.fixedPointToDouble(dut.io.out1.imag.peekInt(), 16, 8)
-        
+
         // Verify
-        assert(abs(act_out0_r - exp_out0_r) < tolerance, 
+        assert(abs(act_out0_r - exp_out0_r) < tolerance,
                f"Vector $i: out0.real expected $exp_out0_r%.3f, got $act_out0_r%.3f")
-        assert(abs(act_out0_j - exp_out0_j) < tolerance, 
+        assert(abs(act_out0_j - exp_out0_j) < tolerance,
                f"Vector $i: out0.imag expected $exp_out0_j%.3f, got $act_out0_j%.3f")
-        assert(abs(act_out1_r - exp_out1_r) < tolerance, 
+        assert(abs(act_out1_r - exp_out1_r) < tolerance,
                f"Vector $i: out1.real expected $exp_out1_r%.3f, got $act_out1_r%.3f")
-        assert(abs(act_out1_j - exp_out1_j) < tolerance, 
+        assert(abs(act_out1_j - exp_out1_j) < tolerance,
                f"Vector $i: out1.imag expected $exp_out1_j%.3f, got $act_out1_j%.3f")
       }
-      
+
       println("Test 4: all %d random test vectors passed".format(numTests))
     }
   }
-  
-  "Butterfly" should "match Python NumPy FFT results (if Python available)" in {
+
+  "Butterfly" should "match Scala Breeze FFT results" in {
     test(new Butterfly(16, 8)) { dut =>
-      println("Testing against Python NumPy FFT (if available)")
-      
-      if (PythonFFTVerifier.isPythonAvailable) {
+      println("Testing against Breeze FFT (if available)")
+
+      if (ScalaFFTVerifier.isBreezeAvailable) {
         println("Python / NumPy detected - running FFT tests")
-        
-        val numTests = 10 
+
+        val numTests = 10
         val random = new scala.util.Random(42)
         val tolerance = 0.01
-        
+
         for (testNum <- 1 to numTests) {
           println(f"\n--- Random Test Case $testNum/$numTests ---")
-          
+
           // Generate random 2-point input
           val in0_r = (random.nextDouble() - 0.5) * 2
-          val in0_j = (random.nextDouble() - 0.5) * 2  
+          val in0_j = (random.nextDouble() - 0.5) * 2
           val in1_r = (random.nextDouble() - 0.5) * 2
           val in1_j = (random.nextDouble() - 0.5) * 2
           val tw_r = 1.0; val tw_j = 0.0  // For 2-point FFT, twiddle is 1
-          
+
           println(f"Input: x[0] = $in0_r%.3f + ${in0_j}%.3fj, x[1] = $in1_r%.3f + ${in1_j}%.3fj")
-          
-          // Get Python reference using N-point with N=2
+
+          // Get Breeze reference using N-point with N=2
           val input2Point = Seq((in0_r, in0_j), (in1_r, in1_j))
-          PythonFFTVerifier.verifyNPointFFTWithPython(input2Point) match {
-            case Some(pythonResult) if pythonResult.length == 2 =>
-              val (python_out0_r, python_out0_j) = pythonResult(0)
-              val (python_out1_r, python_out1_j) = pythonResult(1)
-              
+          ScalaFFTVerifier.verifyNPointFFT(input2Point) match {
+            case Some(breezeResult) if breezeResult.length == 2 =>
+              val (breeze_out0_r, breeze_out0_j) = breezeResult(0)
+              val (breeze_out1_r, breeze_out1_j) = breezeResult(1)
+
               dut.io.in0.real.poke(FixedPointUtils.doubleToFixedPoint(in0_r, 16, 8).S)
               dut.io.in0.imag.poke(FixedPointUtils.doubleToFixedPoint(in0_j, 16, 8).S)
               dut.io.in1.real.poke(FixedPointUtils.doubleToFixedPoint(in1_r, 16, 8).S)
               dut.io.in1.imag.poke(FixedPointUtils.doubleToFixedPoint(in1_j, 16, 8).S)
               dut.io.twiddle.real.poke(FixedPointUtils.doubleToFixedPoint(tw_r, 16, 8).S)
               dut.io.twiddle.imag.poke(FixedPointUtils.doubleToFixedPoint(tw_j, 16, 8).S)
-              
+
               dut.clock.step(1)
-              
+
               val act_out0_r = FixedPointUtils.fixedPointToDouble(dut.io.out0.real.peekInt(), 16, 8)
               val act_out0_j = FixedPointUtils.fixedPointToDouble(dut.io.out0.imag.peekInt(), 16, 8)
               val act_out1_r = FixedPointUtils.fixedPointToDouble(dut.io.out1.real.peekInt(), 16, 8)
               val act_out1_j = FixedPointUtils.fixedPointToDouble(dut.io.out1.imag.peekInt(), 16, 8)
-              
-              // Compare with Python results
+
+              // Compare with breeze results
               val errors = Seq(
-                ("out0.real", act_out0_r, python_out0_r, abs(act_out0_r - python_out0_r)),
-                ("out0.imag", act_out0_j, python_out0_j, abs(act_out0_j - python_out0_j)),
-                ("out1.real", act_out1_r, python_out1_r, abs(act_out1_r - python_out1_r)),
-                ("out1.imag", act_out1_j, python_out1_j, abs(act_out1_j - python_out1_j))
+                ("out0.real", act_out0_r, breeze_out0_r, abs(act_out0_r - breeze_out0_r)),
+                ("out0.imag", act_out0_j, breeze_out0_j, abs(act_out0_j - breeze_out0_j)),
+                ("out1.real", act_out1_r, breeze_out1_r, abs(act_out1_r - breeze_out1_r)),
+                ("out1.imag", act_out1_j, breeze_out1_j, abs(act_out1_j - breeze_out1_j))
               )
-              
+
               val maxError = errors.map(_._4).max
               println(f"Max error: $maxError%.6f (tolerance: $tolerance)")
-              
+
               errors.foreach { case (name, hw, py, err) =>
                 val status = if (err < tolerance) "PASS" else "FAIL"
-                println(f"  $status $name: Python=$py%.6f, Hardware=$hw%.6f, Error=$err%.6f")
+                println(f"  $status $name: Breeze=$py%.6f, Hardware=$hw%.6f, Error=$err%.6f")
               }
-              
+
               // Asserts to fail test
-              assert(abs(act_out0_r - python_out0_r) < tolerance, 
-                     f"Test case $testNum/$numTests FAILED on out0.real: Python=$python_out0_r%.6f, Hardware=$act_out0_r%.6f, Error=${abs(act_out0_r - python_out0_r)}%.6f > $tolerance")
-              assert(abs(act_out0_j - python_out0_j) < tolerance, 
-                     f"Test case $testNum/$numTests FAILED on out0.imag: Python=$python_out0_j%.6f, Hardware=$act_out0_j%.6f, Error=${abs(act_out0_j - python_out0_j)}%.6f > $tolerance")
-              assert(abs(act_out1_r - python_out1_r) < tolerance, 
-                     f"Test case $testNum/$numTests FAILED on out1.real: Python=$python_out1_r%.6f, Hardware=$act_out1_r%.6f, Error=${abs(act_out1_r - python_out1_r)}%.6f > $tolerance")
-              assert(abs(act_out1_j - python_out1_j) < tolerance, 
-                     f"Test case $testNum/$numTests FAILED on out1.imag: Python=$python_out1_j%.6f, Hardware=$act_out1_j%.6f, Error=${abs(act_out1_j - python_out1_j)}%.6f > $tolerance")
-              
+              assert(abs(act_out0_r - breeze_out0_r) < tolerance,
+                     f"Test case $testNum/$numTests FAILED on out0.real: Breeze=$breeze_out0_r%.6f, Hardware=$act_out0_r%.6f, Error=${abs(act_out0_r - breeze_out0_r)}%.6f > $tolerance")
+              assert(abs(act_out0_j - breeze_out0_j) < tolerance,
+                     f"Test case $testNum/$numTests FAILED on out0.imag: Breeze=$breeze_out0_j%.6f, Hardware=$act_out0_j%.6f, Error=${abs(act_out0_j - breeze_out0_j)}%.6f > $tolerance")
+              assert(abs(act_out1_r - breeze_out1_r) < tolerance,
+                     f"Test case $testNum/$numTests FAILED on out1.real: Breeze=$breeze_out1_r%.6f, Hardware=$act_out1_r%.6f, Error=${abs(act_out1_r - breeze_out1_r)}%.6f > $tolerance")
+              assert(abs(act_out1_j - breeze_out1_j) < tolerance,
+                     f"Test case $testNum/$numTests FAILED on out1.imag: Breeze=$breeze_out1_j%.6f, Hardware=$act_out1_j%.6f, Error=${abs(act_out1_j - breeze_out1_j)}%.6f > $tolerance")
+
               println("Test case $testNum passed!")
-              
-            case Some(pythonResult) =>
-              println(s"Python verification returned unexpected result length: ${pythonResult.length}, expected 2")
-              fail(s"Test case $testNum/$numTests FAILED: Python FFT returned ${pythonResult.length} results instead of 2")
-              
+
+            case Some(breezeResult) =>
+              println(s"Breeze verification returned unexpected result length: ${breezeResult.length}, expected 2")
+              fail(s"Test case $testNum/$numTests FAILED: Breeze FFT returned ${breezeResult.length} results instead of 2")
+
             case None =>
-              println("Python verification failed - could not get results")
-              fail(s"Test case $testNum/$numTests FAILED: Could not get Python FFT reference")
+              println("Breeze verification failed - could not get results")
+              fail(s"Test case $testNum/$numTests FAILED: Could not get Breeze FFT reference")
           }
         }
-        
+
         println(f"\nAll $numTests random test cases passed!")
-        
+
       } else {
-        println("Python / NumPy not available - skipping this test")
-        fail("Python / NumPy not available")
+        println("Breeze not available - skipping this test")
+        fail("Breeze not available")
       }
     }
   }
-  
+
 }

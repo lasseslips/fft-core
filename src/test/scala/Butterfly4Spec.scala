@@ -5,12 +5,12 @@ import scala.math._
 
 class Butterfly4Spec extends AnyFlatSpec with ChiselScalatestTester {
 
-  "Butterfly4" should "match Python NumPy FFT results for 4-point FFT" in {
+  "Butterfly4" should "match Scala Breeze FFT results for 4-point FFT" in {
     test(new Butterfly4(16, 8)) { dut =>
-      println("Testing Butterfly4 against Python NumPy 4-point FFT (if Python available)")
+      println("Testing Butterfly4 against Scala Breeze 4-point FFT")
       
-      if (PythonFFTVerifier.isPythonAvailable) {
-        println("Python / NumPy detected - running FFT tests")
+      if (ScalaFFTVerifier.isBreezeAvailable) {
+        println("Breeze detected - running FFT tests")
         
         val numTests = 10 
         val random = new scala.util.Random(42)
@@ -27,9 +27,9 @@ class Butterfly4Spec extends AnyFlatSpec with ChiselScalatestTester {
             (real, imag)
           }
           
-          // Get Python reference using 4-point FFT
-          PythonFFTVerifier.verifyNPointFFTWithPython(inputs) match {
-            case Some(pythonResult) if pythonResult.length == 4 =>
+          // Get breeze reference using 4-point FFT
+          ScalaFFTVerifier.verifyNPointFFT(inputs) match {
+            case Some(breezeResult) if breezeResult.length == 4 =>
               // Set hardware inputs
               for (i <- 0 until 4) {
                 val (real, imag) = inputs(i)
@@ -39,19 +39,19 @@ class Butterfly4Spec extends AnyFlatSpec with ChiselScalatestTester {
 
               dut.clock.step(1)
 
-              // Get hardware outputs and compare with Python results
+              // Get hardware outputs and compare with breeze results
               val errors = scala.collection.mutable.ListBuffer[(String, Double, Double, Double)]()
               
               for (i <- 0 until 4) {
                 val act_real = FixedPointUtils.fixedPointToDouble(dut.io.out(i).real.peekInt(), 16, 8)
                 val act_imag = FixedPointUtils.fixedPointToDouble(dut.io.out(i).imag.peekInt(), 16, 8)
-                val (python_real, python_imag) = pythonResult(i)
+                val (breeze_real, breeze_imag) = breezeResult(i)
                 
-                val real_error = abs(act_real - python_real)
-                val imag_error = abs(act_imag - python_imag)
+                val real_error = abs(act_real - breeze_real)
+                val imag_error = abs(act_imag - breeze_imag)
                 
-                errors += ((s"out$i.real", act_real, python_real, real_error))
-                errors += ((s"out$i.imag", act_imag, python_imag, imag_error))
+                errors += ((s"out$i.real", act_real, breeze_real, real_error))
+                errors += ((s"out$i.imag", act_imag, breeze_imag, imag_error))
               }
               
               val errorList = errors.toList
@@ -60,32 +60,32 @@ class Butterfly4Spec extends AnyFlatSpec with ChiselScalatestTester {
               
               errorList.foreach { case (name, hw, py, err) =>
                 val status = if (err < tolerance) "PASS" else "FAIL"
-                println(f"  $status $name: Python=$py%.6f, Hardware=$hw%.6f, Error=$err%.6f")
+                println(f"  $status $name: Breeze=$py%.6f, Hardware=$hw%.6f, Error=$err%.6f")
               }
               
               // Asserts to fail test if any error exceeds tolerance
               for ((name, hw, py, err) <- errorList) {
                 assert(err < tolerance, 
-                       f"Test case $testNum/$numTests FAILED on $name: Python=$py%.6f, Hardware=$hw%.6f, Error=$err%.6f > $tolerance")
+                       f"Test case $testNum/$numTests FAILED on $name: Breeze=$py%.6f, Hardware=$hw%.6f, Error=$err%.6f > $tolerance")
               }
               
               println(s"Test case $testNum passed!")
               
-            case Some(pythonResult) =>
-              println(s"Python verification returned unexpected result length: ${pythonResult.length}, expected 4")
-              fail(s"Test case $testNum/$numTests FAILED: Python FFT returned ${pythonResult.length} results instead of 4")
+            case Some(breezeResult) =>
+              println(s"Breeze verification returned unexpected result length: ${breezeResult.length}, expected 4")
+              fail(s"Test case $testNum/$numTests FAILED: Breeze FFT returned ${breezeResult.length} results instead of 4")
               
             case None =>
-              println("Python verification failed - could not get results")
-              fail(s"Test case $testNum/$numTests FAILED: Could not get Python FFT reference")
+              println("Breeze verification failed - could not get results")
+              fail(s"Test case $testNum/$numTests FAILED: Could not get Breeze FFT reference")
           }
         }
         
         println(f"\nAll $numTests random test cases passed for Butterfly4!")
         
       } else {
-        println("Python / NumPy not available - skipping this test")
-        fail("Python / NumPy not available")
+        println("Breeze not available - skipping this test")
+        fail("Breeze not available")
       }
     }
   }
