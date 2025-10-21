@@ -24,16 +24,16 @@ object FFTTestData {
         }
         
         // Try to get expected results from Python verifier
-        val expectedFixed = if (PythonFFTVerifier.isPythonAvailable) {
-            PythonFFTVerifier.verifyNPointFFTWithPython(testInputs) match {
-                case Some(pythonResults) =>
-                    pythonResults.map { case (real, imag) =>
+        val expectedFixed = if (ScalaFFTVerifier.isBreezeAvailable) {
+            ScalaFFTVerifier.verifyNPointFFT(testInputs) match {
+                case Some(breezeResults) =>
+                    breezeResults.map { case (real, imag) =>
                         val realFixed = FixedPointUtils.doubleToFixedPointUnsigned(real, width, binaryPoint)
                         val imagFixed = FixedPointUtils.doubleToFixedPointUnsigned(imag, width, binaryPoint)
                         (realFixed, imagFixed)
                     }
                 case None =>
-                    println("Warning: Python FFT verification failed, using input data as expected output.")
+                    println("Warning: Breeze FFT verification failed, using input data as expected output.")
                     inputFixed
             }
         } else {
