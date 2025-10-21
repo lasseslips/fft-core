@@ -27,8 +27,8 @@ object ComplexFixedPoint {
 
     // Complex Multiplier
     // TODO: Look at https://docs.amd.com/v/u/en-US/ug479_7Series_DSP48E1 and see how we can best map to DSP slices
-    // 
-    def mul(a: Complex, b: Complex): Complex = {
+    //
+    def mul(a: Complex, b: Complex, pipeline: Boolean = false): Complex = {
         val out = Wire(new Complex(a.w, a.binaryPoint))
         // (a + jb) * (c + jd) = (ac - bd) + j(ad + bc)
         val doubleWidth = a.w * 2
@@ -43,9 +43,20 @@ object ComplexFixedPoint {
         ad := a.real.asSInt * b.imag.asSInt
         bc := a.imag.asSInt * b.real.asSInt
 
+        val sub = Wire(SInt(doubleWidth.W))
+        val add = Wire(SInt(doubleWidth.W))
+
+        if (pipeline) {
+            sub := RegNext(ac - bd)
+            add := RegNext(ad + bc)
+        } else {
+            sub := ac - bd
+            add := ad + bc
+        }
+
         // Scale down for fixed point arithmetic
-        out.real := (ac - bd) >> a.binaryPoint
-        out.imag := (ad + bc) >> a.binaryPoint
+        out.real := (sub) >> a.binaryPoint
+        out.imag := (add) >> a.binaryPoint
         out
     }
 }

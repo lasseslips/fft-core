@@ -22,13 +22,15 @@ class Butterfly(val width: Int, val binaryPoint: Int, val pipeline: Boolean = fa
     if (pipeline) {
         val sum = RegNext(ComplexFixedPoint.add(io.in0, io.in1))
         val diff = RegNext(ComplexFixedPoint.sub(io.in0, io.in1))
+        //io.out0 := RegNext(RegNext(sum))
+        //io.out1 := RegNext(ComplexFixedPoint.mul(diff, io.twiddle, pipeline))
         io.out0 := RegNext(sum)
-        io.out1 := RegNext(ComplexFixedPoint.mul(diff, io.twiddle))
+        io.out1 := RegNext(ComplexFixedPoint.mul(diff, io.twiddle, false))
     } else {
         val sum = ComplexFixedPoint.add(io.in0, io.in1)
         val diff = ComplexFixedPoint.sub(io.in0, io.in1)
         io.out0 := sum
-        io.out1 := ComplexFixedPoint.mul(diff, io.twiddle)
+        io.out1 := ComplexFixedPoint.mul(diff, io.twiddle, pipeline)
     }
 
 }

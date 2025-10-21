@@ -27,7 +27,7 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
     })
 
     // State machine for test control
-    val sIdle :: sLoadInput :: sFFTProcess :: sLoadResult :: sCompare :: sDone :: Nil = Enum(6)
+    val sIdle :: sLoadInput :: sFFTProcess  :: sCompare :: sDone :: Nil = Enum(5)
     val state = RegInit(sIdle)
 
     // Individual ROMs for each FFT inputs for each test (to enable parallel access)
@@ -70,6 +70,7 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
     // Calculate expected latency based on pipeline configuration
     // For pipelined version, each butterfly stage adds 1 cycle delay
     val fftLatency = ButterflyNUtils.getLatency(fftSize, pipeline).U
+    val comparisonLatency = ComparatorUtils.getLatency(pipeline).U
 
     
     // Counter for indexing test cases
@@ -136,16 +137,21 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
                 for (i <- 0 until fftSize) {
                     outputMems(i).io.writeEnable := true.B
                 }
-                state := sLoadResult
+                state := sCompare
+                delayCounter := 0.U
+            }.otherwise {
+                delayCounter := delayCounter + 1.U
             }
-            delayCounter := delayCounter + 1.U
-        }
-
-        is(sLoadResult) {
-            state := sCompare
         }
 
         is(sCompare) {
+            // Wait for comparator latency
+            when(delayCounter >= comparisonLatency) {
+                state := sDone
+            }.otherwise {
+                delayCounter := delayCounter + 1.U
+            }
+
             // Compare all FFT outputs with expected results in parallel
             val allSamplesPass = Wire(Vec(fftSize, Bool()))
             
@@ -155,7 +161,6 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
             
             comparisonPass := allSamplesPass.reduce(_ && _)
             allDataCompared := true.B
-            state := sDone
         }
         
         is(sDone) {

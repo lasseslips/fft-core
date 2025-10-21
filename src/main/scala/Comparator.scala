@@ -11,16 +11,32 @@ class Comparator(val width: Int, val binaryPoint: Int, val tolerance: Int, val p
         val equal = Output(Bool())
     })
 
+    val diff = Wire(new ComplexFixedPoint.Complex(width, binaryPoint))
+    val absDiff = Wire(new ComplexFixedPoint.Complex(width, binaryPoint))
     // Compute differences
-    val diffReal = io.in0.real - io.in1.real
-    val diffImag = io.in0.imag - io.in1.imag
+    if (pipeline) {
+        diff.real := RegNext(io.in0.real - io.in1.real)
+        diff.imag := RegNext(io.in0.imag - io.in1.imag)
+    } else {
+        diff.real := io.in0.real - io.in1.real
+        diff.imag := io.in0.imag - io.in1.imag
+    }
     
-    val absDiffReal = Mux(diffReal(width-1), -diffReal, diffReal)
-    val absDiffImag = Mux(diffImag(width-1), -diffImag, diffImag)
+    // Compute absolute values of differences
+    absDiff.real := Mux(diff.real < 0.S, -diff.real, diff.real)
+    absDiff.imag := Mux(diff.imag < 0.S, -diff.imag, diff.imag)
     
     if (pipeline) {
-        io.equal := RegNext((absDiffReal <= tolerance.S) && (absDiffImag <= tolerance.S))
+        io.equal := RegNext((absDiff.real <= tolerance.S) && (absDiff.imag <= tolerance.S))
     } else {
-        io.equal := (absDiffReal <= tolerance.S) && (absDiffImag <= tolerance.S)
+        io.equal := (absDiff.real <= tolerance.S) && (absDiff.imag <= tolerance.S)
+    }
+}
+
+object ComparatorUtils {
+    // Calculate the latency for the comparator
+    def getLatency(pipeline: Boolean): Int = {
+        if (!pipeline) 0
+        else 2 // one for calculation and one in output register
     }
 }

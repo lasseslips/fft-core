@@ -8,9 +8,10 @@ class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
         test(new FPGATestTop(fftSize, width, binaryPoint, pipeline, testCases)) { dut =>
             println(s"Testing FPGATestTop with ${fftSize}-point FFT and ${testCases.length} test cases")
 
-            val latency = ButterflyNUtils.getLatency(fftSize, pipeline)
-            val totalCycles = latency + 4 // Extra cycles for control and comparison
-            println(s"Expected FFT latency: $latency cycles, total test cycle budget: $totalCycles cycles")
+            val fftLatency = ButterflyNUtils.getLatency(fftSize, pipeline)
+            val comparatorLatency = ComparatorUtils.getLatency(pipeline)
+            val totalCycles = fftLatency + comparatorLatency + 3 // Extra cycles for control and comparison
+            println(s"Expected FFT latency: $fftLatency cycles, comparator latency: $comparatorLatency cycles, total test cycle budget: $totalCycles cycles")
             val passStatus = scala.collection.mutable.ArrayBuffer.fill(testCases.length)(false)
             var cycle = 0
             for (i <- 0 until testCases.length) {

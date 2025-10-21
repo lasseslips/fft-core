@@ -60,6 +60,9 @@ class ComparatorSpec extends AnyFlatSpec with ChiselScalatestTester {
       dut.io.in0.imag.poke(toSFix(3.0))
       dut.io.in1.imag.poke(toSFix(2.94))
       dut.clock.step()
+      dut.io.equal.expect(true.B)
+
+      dut.clock.step()
       dut.io.equal.expect(false.B)
     }
   }
