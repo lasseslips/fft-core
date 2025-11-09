@@ -1,0 +1,17 @@
+{
+  "base_parameters": {
+    "fftSize": 8,
+    "width": 16,
+    "binaryPoint": 8,
+    "pipeline": true
+  },
+  "parameter_sweep": {
+    "type": "multiple",
+    "comment": "Multiple parameter sweep - all combinations",
+    "parameters": {
+      "fftSize": [8, 16],
+      "pipeline": [true, false],
+      "width": [16, 20]
+    }
+  }
+}

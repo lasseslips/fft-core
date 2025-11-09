@@ -3,3 +3,9 @@ project/*
 target/*
 test_run_dir/*
 *.vcd
+*.pyc
+
+build/reports/*
+build/parametric_results.csv
+build/logs/*
+build/clockInfo.txt

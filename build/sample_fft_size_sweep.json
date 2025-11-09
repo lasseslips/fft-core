@@ -1,0 +1,13 @@
+{
+  "base_parameters": {
+    "fftSize": 8,
+    "width": 16,
+    "binaryPoint": 8,
+    "pipeline": true
+  },
+  "parameter_sweep": {
+    "type": "fft_size",
+    "comment": "Sweep FFT sizes to see resource scaling",
+    "values": [4, 8, 16, 32]
+  }
+}

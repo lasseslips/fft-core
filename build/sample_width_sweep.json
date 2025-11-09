@@ -1,0 +1,13 @@
+{
+  "base_parameters": {
+    "fftSize": 16,
+    "width": 16,
+    "binaryPoint": 8,
+    "pipeline": true
+  },
+  "parameter_sweep": {
+    "type": "data_width",
+    "comment": "Sweep data widths to see precision vs resource trade-off",
+    "values": [8, 12, 16, 20, 24]
+  }
+}
