@@ -9,9 +9,11 @@ class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
             println(s"Testing FPGATestTop with ${fftSize}-point FFT and ${testCases.length} test cases")
 
             val fftLatency = ButterflyNUtils.getLatency(fftSize, pipeline)
+            val ifftLatency = fftLatency // IFFT wrapper uses same underlying latency
             val comparatorLatency = ComparatorUtils.getLatency(pipeline)
-            val totalCycles = fftLatency + comparatorLatency + 3 // Extra cycles for control and comparison
-            println(s"Expected FFT latency: $fftLatency cycles, comparator latency: $comparatorLatency cycles, total test cycle budget: $totalCycles cycles")
+            // Exact expected cycles from entering the loop (includes sLoadInput, FFT, IFFT, compare and small control overhead)
+            val expectedCycles = fftLatency + ifftLatency + comparatorLatency + 5
+            println(s"Expected FFT latency: $fftLatency cycles, IFFT latency: $ifftLatency cycles, comparator latency: $comparatorLatency cycles, expected test cycles in loop: $expectedCycles cycles")
             val passStatus = scala.collection.mutable.ArrayBuffer.fill(testCases.length)(false)
             var cycle = 0
             for (i <- 0 until testCases.length) {
@@ -22,10 +24,10 @@ class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
                 while (!dut.io.testComplete.peek().litToBoolean) {
                     dut.clock.step(1)
                     cycle += 1
-                    assert(cycle <= totalCycles, s"Test did not complete in expected time for test case $i")
+                    assert(cycle <= expectedCycles, s"Test did not complete in expected time for test case $i")
                 }
                 println(s"Test completed in $cycle cycles")
-                assert(cycle == totalCycles, s"Test $i completed too quickly, expected exactly $totalCycles cycles for FFT processing and control")
+                assert(cycle == expectedCycles, s"Test $i did not take the exact expected cycles: expected $expectedCycles but got $cycle")
                 // Check LEDs for pass/fail indication
                 val pass = dut.io.ledPass.peek().litToBoolean
                 val fail = dut.io.ledFail.peek().litToBoolean

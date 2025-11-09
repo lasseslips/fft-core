@@ -163,7 +163,7 @@ def parse_utilization_report(util_file):
         print(f"Error parsing utilization report: {e}")
         return None, None, None, None, None, None
     
-def parse_hierarchical_utilization(hier_file):
+def parse_hierarchical_utilization(hier_file, string="fftCore"):
     """Parse hierarchical utilization report to extract FFTCore-specific metrics."""
     if not hier_file.exists():
         return None, None, None, None
@@ -174,7 +174,7 @@ def parse_hierarchical_utilization(hier_file):
         
         # Look for fftCore line in hierarchical report
         # Format: |   fftCore                  |     ButterflyN_30 |       7621 |       7621 |       0 |    0 | 8698 |      0 |      0 |         85 |
-        fft_match = re.search(r'\|\s*fftCore\s*\|[^|]*\|\s*(\d+)\s*\|[^|]*\|[^|]*\|[^|]*\|\s*(\d+)\s*\|[^|]*\|[^|]*\|\s*(\d+)\s*\|', content)
+        fft_match = re.search(r'\|\s*' + re.escape(string) + r'\s*\|[^|]*\|\s*(\d+)\s*\|[^|]*\|[^|]*\|[^|]*\|\s*(\d+)\s*\|[^|]*\|[^|]*\|\s*(\d+)\s*\|', content)
         
         if fft_match:
             fft_luts = int(fft_match.group(1))
@@ -369,8 +369,8 @@ def run_parametric_build(vivado_script, version, tcl_file, params, run_number):
     wns, max_freq = parse_timing_report(timing_file)
     fft_wns, fft_max_freq = parse_fftcore_timing(timing_detailed_file)
     luts_used, lut_percentage, ffs_used, ffs_percentage, dsps_used, dsp_percentage = parse_utilization_report(util_file)
-    fft_luts, fft_lut_pct, fft_ffs, fft_ffs_pct, fft_dsps, fft_dsp_pct = parse_hierarchical_utilization(hier_file)
-    
+    fft_luts, fft_lut_pct, fft_ffs, fft_ffs_pct, fft_dsps, fft_dsp_pct = parse_hierarchical_utilization(hier_file, string="fftCore")
+    ifft_luts, ifft_lut_pct, ifft_ffs, ifft_ffs_pct, ifft_dsps, ifft_dsp_pct = parse_hierarchical_utilization(hier_file, string="ifftCore")
     total_time = compile_time + synthesis_time
     
     metrics = {
@@ -395,6 +395,12 @@ def run_parametric_build(vivado_script, version, tcl_file, params, run_number):
         'fft_ffs_percentage': fft_ffs_pct,
         'fft_dsps_used': fft_dsps,
         'fft_dsp_percentage': fft_dsp_pct,
+        'ifft_luts_used': ifft_luts,
+        'ifft_lut_percentage': ifft_lut_pct,
+        'ifft_ffs_used': ifft_ffs,
+        'ifft_ffs_percentage': ifft_ffs_pct,
+        'ifft_dsps_used': ifft_dsps,
+        'ifft_dsp_percentage': ifft_dsp_pct,
         'compile_time_s': compile_time,
         'synthesis_time_s': synthesis_time,
         'total_time_s': total_time,
@@ -426,11 +432,19 @@ def run_parametric_build(vivado_script, version, tcl_file, params, run_number):
     fft_ff_pct_str = f"{fft_ffs_pct:.2f}" if fft_ffs_pct is not None else "N/A"
     fft_dsp_str = f"{fft_dsps}" if fft_dsps is not None else "N/A"
     fft_dsp_pct_str = f"{fft_dsp_pct:.2f}" if fft_dsp_pct is not None else "N/A"
+
+    ifft_lut_str = f"{ifft_luts}" if ifft_luts is not None else "N/A"
+    ifft_lut_pct_str = f"{ifft_lut_pct:.2f}" if ifft_lut_pct is not None else "N/A"
+    ifft_ff_str = f"{ifft_ffs}" if ifft_ffs is not None else "N/A"
+    ifft_ff_pct_str = f"{ifft_ffs_pct:.2f}" if ifft_ffs_pct is not None else "N/A"
+    ifft_dsp_str = f"{ifft_dsps}" if ifft_dsps is not None else "N/A"
+    ifft_dsp_pct_str = f"{ifft_dsp_pct:.2f}" if ifft_dsp_pct is not None else "N/A"
     
     print(f"  Run {run_number} completed - WNS: {wns_str}ns, Max Freq: {freq_str}MHz")
     print(f"    FFTCore Timing: WNS: {fft_wns_str}ns, Max Freq: {fft_freq_str}MHz")
     print(f"    Total Resources: LUTs: {lut_str} ({lut_pct_str}%),  FFs: {ff_str} ({ff_pct_str}%),  DSPs: {dsp_str} ({dsp_pct_str}%)")
     print(f"    FFTCore Resources: LUTs: {fft_lut_str} ({fft_lut_pct_str}%), FFs: {fft_ff_str} ({fft_ff_pct_str}%), DSPs: {fft_dsp_str} ({fft_dsp_pct_str}%)")
+    print(f"    IFFTCore Resources: LUTs: {ifft_lut_str} ({ifft_lut_pct_str}%), FFs: {ifft_ff_str} ({ifft_ff_pct_str}%), DSPs: {ifft_dsp_str} ({ifft_dsp_pct_str}%)")
     print(f"    Run Time: Compile: {compile_time:.1f}s, Synthesis: {synthesis_time:.1f}s")
     
     return metrics
@@ -505,8 +519,8 @@ def main():
             results.append(metrics)
             successful_runs += 1
         else:
-            # Add failed run entry
-            results.append({
+            # Record failed run
+            failed_metrics = {
                 'run': run_num,
                 'fft_size': params.get("fftSize", "N/A"),
                 'data_width': params.get("width", "N/A"),
@@ -514,25 +528,46 @@ def main():
                 'pipeline': params.get("pipeline", "N/A"),
                 'wns_ns': None,
                 'max_frequency_mhz': None,
+                'fft_wns_ns': None,
+                'fft_max_frequency_mhz': None,
                 'luts_used': None,
                 'lut_percentage': None,
+                'ffs_used': None,
+                'ffs_percentage': None,
                 'dsps_used': None,
                 'dsp_percentage': None,
+                'fft_luts_used': None,
+                'fft_lut_percentage': None,
+                'fft_ffs_used': None,
+                'fft_ffs_percentage': None,
+                'fft_dsps_used': None,
+                'fft_dsp_percentage': None,
+                'ifft_luts_used': None,
+                'ifft_lut_percentage': None,
+                'ifft_ffs_used': None,
+                'ifft_ffs_percentage': None,
+                'ifft_dsps_used': None,
+                'ifft_dsp_percentage': None,
                 'compile_time_s': None,
                 'synthesis_time_s': None,
                 'total_time_s': None,
                 'success': False
-            })
+            }
+            results.append(failed_metrics)
         
         print("-" * 40)
     
     # Write results to CSV
     output_file = Path(args.output)
     fieldnames = [
-        'run', 'fft_size', 'data_width', 'binary_point', 'pipeline', 
+        'run', 'fft_size', 'data_width', 'binary_point', 'pipeline',
         'wns_ns', 'max_frequency_mhz', 'fft_wns_ns', 'fft_max_frequency_mhz',
-        'luts_used', 'lut_percentage', 'ffs_used', 'ffs_percentage', 'dsps_used', 'dsp_percentage', 
-        'fft_luts_used', 'fft_lut_percentage', 'fft_ffs_used', 'fft_ffs_percentage', 'fft_dsps_used', 'fft_dsp_percentage', 
+        'luts_used', 'lut_percentage', 'ffs_used', 'ffs_percentage',
+        'dsps_used', 'dsp_percentage',
+        'fft_luts_used', 'fft_lut_percentage', 'fft_ffs_used', 'fft_ffs_percentage',
+        'fft_dsps_used', 'fft_dsp_percentage',
+        'ifft_luts_used', 'ifft_lut_percentage', 'ifft_ffs_used', 'ifft_ffs_percentage',
+        'ifft_dsps_used', 'ifft_dsp_percentage',
         'compile_time_s', 'synthesis_time_s', 'total_time_s', 'success'
     ]
     

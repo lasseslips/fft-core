@@ -27,7 +27,7 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
     })
 
     // State machine for test control
-    val sIdle :: sLoadInput :: sFFTProcess  :: sCompare :: sDone :: Nil = Enum(5)
+    val sIdle :: sLoadFFTInput :: sFFTProcess :: sLoadIFFTInput :: sIFFTProcess :: sCompare :: sDone :: Nil = Enum(7)
     val state = RegInit(sIdle)
 
     // Individual ROMs for each FFT inputs for each test (to enable parallel access)
@@ -47,12 +47,21 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
     }
 
     // Individual memories for each FFT output (to enable parallel access)
-    val outputMems = Seq.tabulate(fftSize) { i =>
+    // Memory to store FFT outputs
+    val fftMems = Seq.tabulate(fftSize) { i =>
+        Module(new ComplexMemory(testCases.size, width, binaryPoint))
+    }
+
+    // Memory to store IFFT outputs (final outputs)
+    val outMems = Seq.tabulate(fftSize) { i =>
         Module(new ComplexMemory(testCases.size, width, binaryPoint))
     }
     
     // FFT core instance
     val fftCore = Module(new ButterflyN(fftSize, width, binaryPoint, pipeline))
+
+    // IFFT core instance
+    val ifftCore = Module(new InverseFFT(fftSize, width, binaryPoint, pipeline))
 
     // Assign twiddle factors
     val totalTwiddleCount = ButterflyNUtils.calcTwiddleCount(fftSize)
@@ -61,10 +70,17 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
     for (i <- 0 until totalTwiddleCount) {
         fftCore.io.twiddles(i).real := twiddles(i)._1.S
         fftCore.io.twiddles(i).imag := twiddles(i)._2.S
+        ifftCore.io.twiddles(i).real := twiddles(i)._1.S
+        ifftCore.io.twiddles(i).imag := twiddles(i)._2.S
     }
 
-    val comparators = Seq.tabulate(fftSize) { i =>
-        Module(new Comparator(width, binaryPoint, testCases(0).tolerance, pipeline)) // Use tolerance from first test case (should be same for all)
+    // Two sets of comparators: one to compare FFT outputs against expected FFT results,
+    // and one to compare IFFT outputs against the original inputs (round-trip check).
+    val comparatorsFFT = Seq.tabulate(fftSize) { i =>
+        Module(new Comparator(width, binaryPoint, testCases(0).tolerance, pipeline))
+    }
+    val comparatorsIFFT = Seq.tabulate(fftSize) { i =>
+        Module(new Comparator(width, binaryPoint, testCases(0).tolerance, pipeline))
     }
     
     // Calculate expected latency based on pipeline configuration
@@ -78,8 +94,9 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
     // Counter for FFT latency
     val delayCounter = RegInit(0.U(log2Ceil(32).W))  // Support up to 32 cycles delay
 
-    val inputsRegs = RegInit(VecInit(Seq.fill(fftSize)(0.U.asTypeOf(new ComplexFixedPoint.Complex(width, binaryPoint)))))
-    
+    val fftInRegs = RegInit(VecInit(Seq.fill(fftSize)(0.U.asTypeOf(new ComplexFixedPoint.Complex(width, binaryPoint)))))
+    val ifftInRegs = RegInit(VecInit(Seq.fill(fftSize)(0.U.asTypeOf(new ComplexFixedPoint.Complex(width, binaryPoint)))))
+
     // Comparison logic
     val comparisonPass = RegInit(true.B)
     val allDataCompared = RegInit(false.B)
@@ -90,32 +107,55 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
         inputROMs(i).io.addr := currentTestIndex
         expectedROMs(i).io.addr := currentTestIndex
 
-        // Initialize output memories
-        outputMems(i).io.writeEnable := false.B
-        outputMems(i).io.writeAddr := currentTestIndex
-        outputMems(i).io.writeData := fftCore.io.out(i)
-        outputMems(i).io.readAddr := currentTestIndex
+        // Initialize FFT memory (write disabled by default)
+        fftMems(i).io.writeEnable := false.B
+        fftMems(i).io.writeAddr := currentTestIndex
+        fftMems(i).io.writeData := fftCore.io.out(i)
+        fftMems(i).io.readAddr := currentTestIndex
 
-        // Connect comparators
-        comparators(i).io.in0 := expectedROMs(i).io.data
-        comparators(i).io.in1 := outputMems(i).io.readData
+        // Initialize output memory (IFFT outputs)
+        outMems(i).io.writeEnable := false.B
+        outMems(i).io.writeAddr := currentTestIndex
+        outMems(i).io.writeData := ifftCore.io.out(i)
+        outMems(i).io.readAddr := currentTestIndex
+
+        // Connect FFT comparators: compare expected FFT results (expectedROMs) with fftMems read data
+        comparatorsFFT(i).io.in0 := expectedROMs(i).io.data
+        comparatorsFFT(i).io.in1 := fftMems(i).io.readData
+
+        // Connect IFFT comparators: compare original inputs (inputROMs) with outMems read data
+        comparatorsIFFT(i).io.in0 := inputROMs(i).io.data
+        comparatorsIFFT(i).io.in1 := outMems(i).io.readData
     }
     
     
     // FFT core connections - connect all inputs from individual ROMs (using registers to break combinational path)
     for (i <- 0 until fftSize) {
-        fftCore.io.in(i) := inputsRegs(i)
+        fftCore.io.in(i) := fftInRegs(i)
+        ifftCore.io.in(i) := ifftInRegs(i)
     }
+
+    // Compare both FFT and IFFT results
+    val allSamplesPassFFT = Wire(Vec(fftSize, Bool()))
+    val allSamplesPassIFFT = Wire(Vec(fftSize, Bool()))
+    for (i <- 0 until fftSize) {
+        allSamplesPassFFT(i) := comparatorsFFT(i).io.equal
+        allSamplesPassIFFT(i) := comparatorsIFFT(i).io.equal
+    }
+
+    val passFFT = allSamplesPassFFT.reduce(_ && _)
+    val passIFFT = allSamplesPassIFFT.reduce(_ && _)
+    comparisonPass := passFFT && passIFFT
+
     
     // State machine implementation
     switch(state) {
         is(sIdle) {
             delayCounter := 0.U
-            comparisonPass := true.B
             allDataCompared := false.B
             
             when(io.startTest) {
-                state := sLoadInput
+                state := sLoadFFTInput
                 currentTestIndex := currentTestIndex + 1.U
                 when(currentTestIndex === (testCases.size - 1).U) {
                     currentTestIndex := 0.U // Wrap around to first test case
@@ -123,19 +163,52 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
             }
         }
 
-        is(sLoadInput) {
+        is(sLoadFFTInput) {
             state := sFFTProcess
             for (i <- 0 until fftSize) {
-                inputsRegs(i) := inputROMs(i).io.data
+                fftInRegs(i) := inputROMs(i).io.data
             }
         }
-        
+
+        // FFT processing: run FFT and when complete, write FFT outputs into fftMems
         is(sFFTProcess) {
-            // Wait for FFT latency, then store outputs
             when(delayCounter >= fftLatency) {
                 // Store all FFT outputs to their respective memories in parallel
                 for (i <- 0 until fftSize) {
-                    outputMems(i).io.writeEnable := true.B
+                    fftMems(i).io.writeEnable := true.B
+                    fftMems(i).io.writeAddr := currentTestIndex
+                    fftMems(i).io.writeData := fftCore.io.out(i)
+                    fftMems(i).io.readAddr := currentTestIndex
+                }
+                // Move to IFFT processing stage
+                state := sIFFTProcess
+                delayCounter := 0.U
+            }.otherwise {
+                delayCounter := delayCounter + 1.U
+            }
+        }
+
+        is(sLoadIFFTInput) {
+            state := sIFFTProcess
+            for (i <- 0 until fftSize) {
+                ifftInRegs(i) := fftMems(i).io.readData
+            }
+        }
+
+        // IFFT processing: read from fftMems (readAddr already set previous state), feed IFFT and write outputs to outMems
+        is(sIFFTProcess) {
+            // Feed IFFT inputs from fft memory read data (available this cycle)
+            for (i <- 0 until fftSize) {
+                ifftCore.io.in(i) := fftMems(i).io.readData
+            }
+
+            // Wait for IFFT latency, then store outputs
+            when(delayCounter >= ButterflyNUtils.getLatency(fftSize, pipeline).U) {
+                for (i <- 0 until fftSize) {
+                    outMems(i).io.writeEnable := true.B
+                    outMems(i).io.writeAddr := currentTestIndex
+                    outMems(i).io.writeData := ifftCore.io.out(i)
+                    outMems(i).io.readAddr := currentTestIndex
                 }
                 state := sCompare
                 delayCounter := 0.U
@@ -145,21 +218,15 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
         }
 
         is(sCompare) {
-            // Wait for comparator latency
-            when(delayCounter >= comparisonLatency) {
+            // Wait for comparator latency plus one cycle for memory read latency
+            val effectiveCompareLatency = (comparisonLatency + 1.U)
+            when(delayCounter >= effectiveCompareLatency) {
                 state := sDone
             }.otherwise {
                 delayCounter := delayCounter + 1.U
             }
 
-            // Compare all FFT outputs with expected results in parallel
-            val allSamplesPass = Wire(Vec(fftSize, Bool()))
-            
-            for (i <- 0 until fftSize) {
-                allSamplesPass(i) := comparators(i).io.equal
-            }
-            
-            comparisonPass := allSamplesPass.reduce(_ && _)
+
             allDataCompared := true.B
         }
         
