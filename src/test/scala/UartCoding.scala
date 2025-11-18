@@ -1,0 +1,67 @@
+import scala.collection.mutable.ListBuffer
+
+// Refactored from https://github.com/DreasL02/NeuralNetworkAccelerator/blob/main/src/main/scala/scala_utils/UartCoding.scala
+// by Ivan Hansgaard Hansen and Andreas Lildballe (2024). Used with permission.
+// Handed in as part of a Neural Network Accelerator Generator Bachelor Project.
+
+object UartCoding {
+
+  def cyclesPerSerialBit(frequency: Int, baudRate: Int): Int = {
+    // Return the number of clock cycles per serial bit.
+    // Match the behaviour in `RxUART` where `clocksPerBaud = clockFreq / baudRate`.
+    // Use rounding to nearest integer for non-divisible values.
+    (frequency + baudRate / 2) / baudRate - 1
+  }
+
+  def encodeByteToUartBits(byte: Byte): String = {
+    val dataBitString = String.format("%8s", byte.toBinaryString).replace(' ', '0')
+
+    // The data bits are sent LSB first.
+    val dataBitStringLsbFirst = dataBitString.reverse
+    // One start bit (0), data (8 bits), two stop bits (11).
+    "0" + dataBitStringLsbFirst + "11"
+  }
+
+  def padLeft(byte: Byte): String = {
+    val dataBitString = String.format("%8s", byte.toBinaryString).replace(' ', '0')
+    dataBitString
+  }
+
+  def padLeft(value: BigInt, length: Int): String = {
+    val dataBitString = String.format("%" + length + "s", value.toString(2)).replace(' ', '0')
+    dataBitString
+  }
+
+  def encodeBytesToUartBits(bytes: Array[Byte]): String = {
+    val dataBitStrings = bytes.map(encodeByteToUartBits)
+    val combinedDataBitString = dataBitStrings.mkString
+    combinedDataBitString
+  }
+
+  def decodeUartBitsToByteArray(bits: Array[BigInt], bufferBitSize: Int = 8): Array[Byte] = {
+    val output = ListBuffer[Byte]()
+    var i = 0
+
+    while (i < bits.length) {
+      while (bits(i) == 1) {
+        i += 1
+
+        if (i == bits.length - 1) {
+          return output.toArray
+        }
+      }
+      val dataBits = bits.slice(i + 1, i + bufferBitSize)
+      val dataAsUInt = dataBits.zipWithIndex.map { case (element, index) => element * Math.pow(2, index).toInt }
+      output.append(dataAsUInt.sum.toByte)
+      i = i + (bufferBitSize + 1)
+    }
+
+    output.toArray
+  }
+
+    def getCyclesNeededForBytes(frequency: Int, baudRate: Int, numBytes: Int, stopBits: Int = 2): Int = {
+        val bitsPerByte = 1 + 8 + stopBits // start bit + data bits + stop bits
+        val cyclesPerBit = cyclesPerSerialBit(frequency, baudRate) + 1 // +1 to account for the current cycle
+        bitsPerByte * cyclesPerBit * numBytes
+    }
+}

@@ -9,8 +9,6 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
     require(testCases.forall(_.size == fftSize), s"All test cases must have FFT size $fftSize")
 
     val io = IO(new Bundle {
-        // Clock and reset are implicit
-        
         // Test control signals
         val startTest = Input(Bool())
         val testComplete = Output(Bool())
@@ -92,7 +90,7 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
     // Counter for indexing test cases
     val currentTestIndex = RegInit(0.U(log2Ceil(testCases.size).W))
     // Counter for FFT latency
-    val delayCounter = RegInit(0.U(log2Ceil(32).W))  // Support up to 32 cycles delay
+    val delayCounter = RegInit(0.U(log2Ceil(32).W))
 
     val fftInRegs = RegInit(VecInit(Seq.fill(fftSize)(0.U.asTypeOf(new ComplexFixedPoint.Complex(width, binaryPoint)))))
     val ifftInRegs = RegInit(VecInit(Seq.fill(fftSize)(0.U.asTypeOf(new ComplexFixedPoint.Complex(width, binaryPoint)))))
