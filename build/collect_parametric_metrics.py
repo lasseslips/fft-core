@@ -264,7 +264,7 @@ def generate_parameter_sets(config):
 def create_scala_main(params, output_path="../src/main/scala/Main.scala.tmp"):
     """Create a temporary Main.scala file with specified parameters."""
     template = f'''import chisel3._
-
+    import verifier.FFTTestData
 /**
  * An object extending App to generate the Verilog code.
  * Generated automatically with parameters: {params}

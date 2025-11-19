@@ -1,3 +1,5 @@
+package verifier
+
 import breeze.linalg._
 import breeze.signal._
 import breeze.math.Complex

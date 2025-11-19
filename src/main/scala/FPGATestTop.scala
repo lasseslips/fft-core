@@ -1,6 +1,7 @@
 import chisel3._
 import chisel3.util._
 import scala.math._
+import verifier.FFTTestCase
 
 class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: Int = 8, val pipeline: Boolean = true, val testCases: Seq[FFTTestCase] = Seq()) extends Module {
     def isPow2(x: Int): Boolean = (x & (x - 1)) == 0

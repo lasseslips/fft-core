@@ -1,6 +1,7 @@
 import chisel3._
 import chisel3.util._
 import scala.math._
+import utils.FixedPointUtils
 
 class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int, val pipeline: Boolean = false) extends Module {
     def isPow2(x: Int): Boolean = (x & (x - 1)) == 0

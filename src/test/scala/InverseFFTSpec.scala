@@ -2,6 +2,8 @@ import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import scala.math._
+import utils.FixedPointUtils
+import verifier.ScalaFFTVerifier
 
 class InverseFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
   def genNumStr(nums: Seq[(Double, Double)]): String = {

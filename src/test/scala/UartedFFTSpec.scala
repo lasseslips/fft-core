@@ -1,50 +1,15 @@
 import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
+import utils.FixedPointUtils
+import verifier.ScalaFFTVerifier
+import utils.ChunkUtils
 
 /**
   * End-to-end test for UartedFFT: feed complex numbers through RxUART -> ComplexReciver -> FFT -> ComplexTransmitter -> TxUART
   * This test focuses on dataflow and integration, not full UART bit-level timing.
   */
 class UartedFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
-  def getChunksForComplexNumbers(complexNumbers: Seq[(Double, Double)], communicationWidth: Int, width: Int, binaryPoint: Int): Seq[Int] = {
-      val chunkCnt = width / communicationWidth
-      complexNumbers.flatMap { case (real, imag) =>
-          val realFixed = FixedPointUtils.doubleToFixedPointUnsigned(real, width, binaryPoint)
-          val imagFixed = FixedPointUtils.doubleToFixedPointUnsigned(imag, width, binaryPoint)
-
-          val realChunks = (0 until chunkCnt).map { i =>
-              ((realFixed >> (i * communicationWidth)) & ((BigInt(1) << communicationWidth) - 1)).toInt
-          }
-          val imagChunks = (0 until chunkCnt).map { i =>
-              ((imagFixed >> (i * communicationWidth)) & ((BigInt(1) << communicationWidth) - 1)).toInt
-          }
-
-          realChunks ++ imagChunks
-      }
-  }
-
-  def getComplexNumbersFromChunks(chunks: Seq[Int], communicationWidth: Int, width: Int, binaryPoint: Int): Seq[(Double, Double)] = {
-    val chunkCnt = width / communicationWidth
-    chunks.grouped(chunkCnt * 2).map { chunkGroup =>
-      val realChunks = chunkGroup.take(chunkCnt)
-      val imagChunks = chunkGroup.drop(chunkCnt)
-
-      val realFixed = realChunks.zipWithIndex.map { case (chunk, i) =>
-        BigInt(chunk) << (i * communicationWidth)
-      }.sum
-
-      val imagFixed = imagChunks.zipWithIndex.map { case (chunk, i) =>
-        BigInt(chunk) << (i * communicationWidth)
-      }.sum
-
-      val realDouble = FixedPointUtils.fixedPointToDouble(realFixed, width, binaryPoint)
-      val imagDouble = FixedPointUtils.fixedPointToDouble(imagFixed, width, binaryPoint)
-
-      (realDouble, imagDouble)
-    }.toSeq
-  }
-  
   behavior of "UartedFFT"
 
   it should "process a small vector end-to-end" in {
@@ -65,11 +30,11 @@ class UartedFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
       val inputs = Seq((1.0, 0.0), (0.0, 0.0))
 
       // Build byte chunks (real then imag per complex) as the transmitter/receiver expect
-      val chunks = getChunksForComplexNumbers(inputs, 8, dut.width, dut.binaryPoint)
+      val chunks = ChunkUtils.getChunksForComplexNumbers(inputs, 8, dut.width, dut.binaryPoint)
 
       // Convert to byte array for UART encoding
       val bytesToSend = chunks.map(_.toByte).toArray
-      val bitString = UartCoding.encodeBytesToUartBits(bytesToSend)
+      val bitString = communication.UartCoding.encodeBytesToUartBits(bytesToSend)
 
       // Use small baud/clock values (match UART specs): keep clocksPerBaud small
       val clocksPerBaud = clockFreq / baudRate
@@ -96,7 +61,7 @@ class UartedFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
 
       // Release rx line to idle and collect additional cycles to finish transmission
       dut.io.rx.poke(true.B)
-      val remainingCycles = UartCoding.getCyclesNeededForBytes(clockFreq, baudRate, bytesToSend.length)
+      val remainingCycles = communication.UartCoding.getCyclesNeededForBytes(clockFreq, baudRate, bytesToSend.length)
       for (_ <- 0 until remainingCycles) {
         txBits += (if (dut.io.tx.peek().litToBoolean) BigInt(1) else BigInt(0))
         dut.clock.step()
@@ -110,8 +75,8 @@ class UartedFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
       }.toArray
 
       // Decode the serial bit stream into bytes
-      val decoded = UartCoding.decodeUartBitsToByteArray(sampledTxBits, communicationWidth)
-      val expectedOutputChunks = getChunksForComplexNumbers(ScalaFFTVerifier.verifyNPointFFT(inputs).get.toSeq, 8, dut.width, dut.binaryPoint)
+      val decoded = communication.UartCoding.decodeUartBitsToByteArray(sampledTxBits, communicationWidth)
+      val expectedOutputChunks = ChunkUtils.getChunksForComplexNumbers(ScalaFFTVerifier.verifyNPointFFT(inputs).get.toSeq, 8, dut.width, dut.binaryPoint)
       val expectedOutputBytes = expectedOutputChunks.map(_.toByte).toArray
       assert(decoded.sameElements(expectedOutputBytes), s"Decoded output bytes do not match expected FFT output bytes.\nExpected: ${expectedOutputBytes.mkString(", ")}\nGot: ${decoded.mkString(", ")}")
     }

@@ -1,14 +1,15 @@
 import chisel3._
+import verifier.FFTTestData
 
-/**
- * An object extending App to generate the Verilog code.
- */
 object Main extends App {
   println("I will now generate the Verilog file!")
   val fftSize = 16
-  val width = 8
-  val binaryPoint = 4
+  val width = 16
+  val binaryPoint = 8
   val pipeline = true
+
+  val baudRate = 115200
+  val clockFreq = 100_000_000 // 100 MHz
   val testCases = Seq(
       FFTTestData.generateTestCase(fftSize, "impulse", width, binaryPoint),
       FFTTestData.generateTestCase(fftSize, "sinusoid", width, binaryPoint),
@@ -16,6 +17,6 @@ object Main extends App {
       FFTTestData.generateTestCase(fftSize, "dc", width, binaryPoint),
       FFTTestData.generateTestCase(fftSize, "random", width, binaryPoint)
   )
-  emitVerilog(new FPGATestTop(fftSize, width, binaryPoint, pipeline, testCases), Array("--target-dir", "verilog"))
-  emitVerilog(new UartedFFT(baudRate = 115200, clockFreq = 50000000, fftSize, width, binaryPoint, pipeline), Array("--target-dir", "verilog"))
+  //emitVerilog(new FPGATestTop(fftSize, width, binaryPoint, pipeline, testCases), Array("--target-dir", "verilog"))
+  emitVerilog(new UartedFFT(baudRate, clockFreq, width, binaryPoint, fftSize, pipeline), Array("--target-dir", "verilog"))
 }

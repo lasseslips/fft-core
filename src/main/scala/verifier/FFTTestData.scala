@@ -1,7 +1,7 @@
+package verifier
 import chisel3._
 import scala.math._
 import utils.FixedPointUtils
-import verifier.ScalaFFTVerifier
 
 // General FFT test data generator
 object FFTTestData {

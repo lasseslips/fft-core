@@ -1,3 +1,5 @@
+package verifier
+
 import scala.sys.process._
 import java.io.{File, PrintWriter}
 import scala.io.Source

@@ -1,8 +1,6 @@
-import scala.collection.mutable.ListBuffer
+package communication
 
-// Refactored from https://github.com/DreasL02/NeuralNetworkAccelerator/blob/main/src/main/scala/scala_utils/UartCoding.scala
-// by Ivan Hansgaard Hansen and Andreas Lildballe (2024). Used with permission.
-// Handed in as part of a Neural Network Accelerator Generator Bachelor Project.
+import scala.collection.mutable.ListBuffer
 
 object UartCoding {
 

@@ -1,4 +1,5 @@
 import org.scalatest.flatspec.AnyFlatSpec
+import utils.FixedPointUtils
 
 class FixedPointUtilsSpec extends AnyFlatSpec {
 

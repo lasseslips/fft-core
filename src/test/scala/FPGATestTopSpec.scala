@@ -2,6 +2,8 @@ import chisel3._
 import chisel3.util._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
+import verifier.FFTTestCase
+import verifier.FFTTestData
 
 class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
     def testWithFFTSize(fftSize: Int, width: Int, binaryPoint: Int, pipeline: Boolean, testCases: Seq[FFTTestCase]): Unit = {

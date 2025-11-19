@@ -2,6 +2,10 @@ import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 import scala.math._
+import utils.FixedPointUtils
+import utils.ButterflyGoldenModel
+import verifier.FFTTestCase
+import verifier.ScalaFFTVerifier
 
 class ButterflySpec extends AnyFlatSpec with ChiselScalatestTester {
 
