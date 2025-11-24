@@ -1,37 +1,48 @@
-# fft-core
-FFT accelerator generator written in chisel using the decimation-in-time apporach (Cooley-Tukey).
+## Fast Fourier Transform Generator Library
+This repository contains a library for generating RTL for the Fast Fourier Transform (FFT) algorithm using Chisel, a hardware construction language embedded in Scala.
+
+Created as part of the "[Agile Hardware Design](https://github.com/schoeberl/agile-hw)" ([02201](https://kurser.dtu.dk/course/02201)) course at DTU.
+
+### Creators : Group 8
+- Andreas Lildballe (s214387, [DreasL02](https://github.com/DreasL02))
+- Lasse Slipsager (s224007, [lasseslips](https://github.com/lasseslips))
+- Henrique Agostinho Loureiro dos Santos de Oliveira (s252981)
+
+### Features
+- Parameterizable Butterfly DIT FFT.
+  - Can be configured for different FFT sizes (powers of two).
+  - Supports fixed-point number representation with customizable bit widths and fractional bits.
+  - Uses a recursive architecture for easy scalability.
+  - Supports both forward and inverse FFT operations.
+- Modular design for easy integration into larger systems
+  - Supports Ready/Valid handshaking for streaming data interfaces.
+  - Possibility to supply inputs through a UART interface.
+- Comprehensive testbench for functional verification using ChiselTest.
+
+### Repository Structure
+
+### Getting Started
 
 
-# The parameters
-- N: Number of points in the FFT (must be a power of 2)
-- S: Number of stages (number of points calculated in parallel = N / S)
-- (Q, P) = (total number of bits, number of integer bits) for the fixed-point representation of the input and output data
-- (Qw, Pw) = (total number of bits, number of integer bits) for the fixed-point representation of the twiddle factors
-- (Qacc, Pacc) = (total number of bits, number of integer bits) for the fixed-point representation of the internal accumulators
-- pipeline: Boolean flag to indicate whether to use pipelining or not
+## Motivation
+
+## Algorithm Explanation
+The 
+
+This repository currently implements the decimation-in-time (DIT) FFT algorithm. 
 
 
 
+## Number Representation
 
-# What we need to do
-### Design / Implementation
-#### Stage 1
-- Make a fixed point complex adder, subtractor and multiplier (and infrastructure for fixed point numbers / complex numbers)
-- Make a simple 2 point butterfly
-- Make a 4 point FFT using 2 point butterflies
+## Design and Implementation
 
-#### Stage 2
-- Make a parameterized N point FFT using log2(N) stages of N/2 butterflies
-- Add pipelining
+## Testing
 
-#### Stage 3
-- Make infrastructure for reusing S butterflies for large N. Need some control logic and memory to store intermediate results.
+## Interfacing 
 
+## Synthesis and Performance
 
-### Testing
-- Make a golden software model in Scala (working on floating points)
-- Floating point -> fixed point conversion functions
-- Test random inputs and compare with golden model (keeping in mind the quantization errors of the conversions)
+## Conclusion and Future Work
 
-### Performance evaluation
-- (around stage 2) Synthesis of various different configurations (N, S, Q, P, Qw, Pw, Qacc, Pacc, pipeline)
+## References
