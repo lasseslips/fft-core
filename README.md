@@ -51,7 +51,6 @@ By splitting the sum into different parts, we can reduce the number of computati
 
 $ X(k) = \sum_{m=0}^{N/2-1} x(2m) \cdot e^{-j \frac{2 \pi}{N} k (2m)} + \sum_{m=0}^{N/2-1} x(2m+1) \cdot e^{-j \frac{2 \pi}{N} k (2m+1)} $
 
-
 The next step can perhaps easily be seen by factoring out the exponentials:
 
 $ X(k) = \sum_{m=0}^{N/2-1} x(2m) \cdot e^{-j \frac{2 \pi}{N/2} k m} + e^{-j \frac{2 \pi}{N} k} \cdot \sum_{m=0}^{N/2-1} x(2m+1) \cdot e^{-j \frac{2 \pi}{N/2} k m} $
@@ -136,10 +135,13 @@ The arithmetic cost of the two approaches is clearly the same. However, the data
 ## Project Agility
 As the project was conducted as part of the Agile Hardware Design course, we adopted agile methodologies to manage our development process effectively. We utilized iterative development and continuous integration practices to ensure that our design evolved in response to the project requirements and time.
 
-This is reflected in the current structure of the Butterfly modules. Files such as [Butterfly2.scala](./src/main/scala/Butterfly2.scala), [Butterfly4.scala](./src/main/scala/Butterfly4.scala), and [Butterfly8.scala](./src/main/scala/Butterfly8.scala) were developed iterating upon the previous and allowed for formalizing patterns and abstractions that could be reused in the final [ButterflyN.scala](./src/main/scala/ButterflyN.scala) implementation. The older patterns allowed for quick validation 
+This is reflected in the current structure of the Butterfly modules. Files such as [Butterfly2.scala](./src/main/scala/Butterfly2.scala), [Butterfly4.scala](./src/main/scala/Butterfly4.scala), and [Butterfly8.scala](./src/main/scala/Butterfly8.scala) were developed iterating upon the previous and allowed for formalizing patterns and abstractions that could be reused in the final [ButterflyN.scala](./src/main/scala/ButterflyN.scala) implementation. The older patterns allowed for quick validation once the generative implementation was complete and ca
 
-In [our continuous integration pipeline](.github/workflows/scala.yml), we set up automated testing using ChiselTest to validate our FFT implementation on every commit. This allowed us to catch issues early and maintain a high level of code quality throughout the project.
+In [our continuous integration pipeline](.github/workflows/scala.yml), we set up automated testing using ChiselTest to validate our FFT implementation on every commit. This would in theory allow us to catch mistakes early and ensure that new features did not break existing functionality, but it only actually caught something during a brief moment where Python was required for a test and not installed on the CI runners.
 
+This is probabily due to the relatively small group size and project scope, which made communication and coordination easier without the need for extensive agile practices. However, the experience provided valuable insights into how agile methodologies can be applied in hardware design projects.
+
+One aspect that was a downside of the continous integration setup was that it developed a very localized setup, where something was only commited once it fully worked (largely due to the tests being developed alongside, if not before, the actual implementation). Perhaps something like branching could be used in future projects, but that also adds overhead. 
 ## Conclusion and Future Work
 
 ## References
