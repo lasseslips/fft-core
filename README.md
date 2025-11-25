@@ -25,7 +25,7 @@ Elements of the UART implementation has previously been handed in and is not ori
   - Possibility to supply inputs through a UART interface.
 - Comprehensive testbench for functional verification using ChiselTest.
 - FPGA test platform support for real-world performance evaluation.
-- Optional python/tcl building and synthesis scripts for evaluating performance on FPGA targets.
+- Optional python/tcl building and synthesis scripts for evaluating performance on FPGA targets using Vivado.
 
 ### Repository Structure
 
@@ -50,6 +50,17 @@ This is achieved through a divide-and-conquer approach, recursively breaking dow
 By splitting the sum into different parts, we can reduce the number of computations needed. One common method is the Cooley-Tukey algorithm, which recursively divides the DFT into smaller DFTs of even and odd indexed samples:
 
 $ X(k) = \sum_{m=0}^{N/2-1} x(2m) \cdot e^{-j \frac{2 \pi}{N} k (2m)} + \sum_{m=0}^{N/2-1} x(2m+1) \cdot e^{-j \frac{2 \pi}{N} k (2m+1)} $
+
+
+The next step can perhaps easily be seen by factoring out the exponentials:
+
+$ X(k) = \sum_{m=0}^{N/2-1} x(2m) \cdot e^{-j \frac{2 \pi}{N/2} k m} + e^{-j \frac{2 \pi}{N} k} \cdot \sum_{m=0}^{N/2-1} x(2m+1) \cdot e^{-j \frac{2 \pi}{N/2} k m} $
+
+Giving us two smaller DFTs of size N/2:
+
+$ E(k) = \sum_{m=0}^{N/2-1} x(2m) \cdot e^{-j \frac{2 \pi}{N/2} k m} $
+
+$ O(k) = \sum_{m=0}^{N/2-1} x(2m+1) \cdot e^{-j \frac{2 \pi}{N/2} k m} $
 
 This can be further simplified using the periodicity and symmetry properties of the complex exponential function, leading to the use of "twiddle factors" which are precomputed complex exponentials that help combine the results of the smaller DFTs efficiently.
 
@@ -121,6 +132,13 @@ The arithmetic cost of the two approaches is clearly the same. However, the data
 ## Interfacing 
 
 ## Synthesis and Performance
+
+## Project Agility
+As the project was conducted as part of the Agile Hardware Design course, we adopted agile methodologies to manage our development process effectively. We utilized iterative development and continuous integration practices to ensure that our design evolved in response to the project requirements and time.
+
+This is reflected in the current structure of the Butterfly modules. Files such as [Butterfly2.scala](./src/main/scala/Butterfly2.scala), [Butterfly4.scala](./src/main/scala/Butterfly4.scala), and [Butterfly8.scala](./src/main/scala/Butterfly8.scala) were developed iterating upon the previous and allowed for formalizing patterns and abstractions that could be reused in the final [ButterflyN.scala](./src/main/scala/ButterflyN.scala) implementation. The older patterns allowed for quick validation 
+
+In [our continuous integration pipeline](.github/workflows/scala.yml), we set up automated testing using ChiselTest to validate our FFT implementation on every commit. This allowed us to catch issues early and maintain a high level of code quality throughout the project.
 
 ## Conclusion and Future Work
 
