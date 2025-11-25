@@ -7,7 +7,11 @@ Created as part of the "[Agile Hardware Design](https://github.com/schoeberl/agi
 - Andreas Lildballe (s214387, [DreasL02](https://github.com/DreasL02))
 - Lasse Slipsager (s224007, [lasseslips](https://github.com/lasseslips))
 - Henrique Agostinho Loureiro dos Santos de Oliveira (s252981)
-Github commits accurately reflect individual contributions.
+
+[Github commits](https://github.com/lasseslips/fft-core/commits/master/) accurately reflect individual contributions.
+
+Elements of the UART implementation has previously been handed in and is not original work of the creators. See [the communication folder](./src/main/scala/communication/README.md) for more details.
+
 
 ### Features
 - Parameterizable pipelined Butterfly FFT.
@@ -47,6 +51,14 @@ By splitting the sum into different parts, we can reduce the number of computati
 
 $ X(k) = \sum_{m=0}^{N/2-1} x(2m) \cdot e^{-j \frac{2 \pi}{N} k (2m)} + \sum_{m=0}^{N/2-1} x(2m+1) \cdot e^{-j \frac{2 \pi}{N} k (2m+1)} $
 
+This can be further simplified using the periodicity and symmetry properties of the complex exponential function, leading to the use of "twiddle factors" which are precomputed complex exponentials that help combine the results of the smaller DFTs efficiently.
+
+$ W_N^k = e^{-j \frac{2 \pi}{N} k} $
+
+$ X(k) = E(k) + W_N^k \cdot O(k) $
+
+
+
 Something about butterflys
 
 ### Butterfly architectures
@@ -64,7 +76,40 @@ $ X_0 = x_0 + x_1 $
 
 $ X_1 = (x_0 - x_1) \cdot W_N^k $
 
-The arithmetic cost of the two approaches is the same, leverging one complex multiplication and two complex additions. However, the data flow and ordering of inputs and outputs differ, which can impact the overall FFT architecture.
+Expanding the complex operations lay bare the hardware requirements for multipliers and adders/subtractors. A complex addition is defined as:
+
+$(a + jb) + (c + jd) = (a + c) + j(b + d)$
+
+A complex multiplication is defined as:
+
+$(a + jb) \cdot (c + jd) = (ac - bd) + j(ad + bc)$
+
+Applying these to Cooley-Tukey gives:
+
+$Re\{X_0\} = Re\{x_0\} + Re\{W_N^k\} \cdot Re\{x_1\} - Im\{W_N^k\} \cdot Im\{x_1\}$
+
+$Im\{X_0\} = Im\{x_0\} + Re\{W_N^k\} \cdot Im\{x_1\} + Im\{W_N^k\} \cdot Re\{x_1\}$
+
+$Re\{X_1\} = Re\{x_0\} - Re\{W_N^k\} \cdot Re\{x_1\} + Im\{W_N^k\} \cdot Im\{x_1\}$
+
+$Im\{X_1\} = Im\{x_0\} - Re\{W_N^k\} \cdot Im\{x_1\} - Im\{W_N^k\} \cdot Re\{x_1\}$
+
+This contains four unique additions/subtractions and four multiplications.
+
+And for Gentleman-Sande:
+
+$Re\{X_0\} = Re\{x_0\} + Re\{x_1\}$
+
+$Im\{X_0\} = Im\{x_0\} + Im\{x_1\}$
+
+$Re\{X_1\} = (Re\{x_0\} - Re\{x_1\}) \cdot Re\{W_N^k\} - (Im\{x_0\} - Im\{x_1\}) \cdot Im\{W_N^k\}$
+
+$Im\{X_1\} = (Re\{x_0\} - Re\{x_1\}) \cdot Im\{W_N^k\} + (Im\{x_0\} - Im\{x_1\}) \cdot Re\{W_N^k\}$
+
+This also contains four unique additions/subtractions and four multiplications.
+
+The arithmetic cost of the two approaches is clearly the same. However, the data flow and ordering of inputs and outputs differ, which can impact the overall FFT architecture.
+
 
 ## Number Representation
 
