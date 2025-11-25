@@ -2,7 +2,13 @@ import chisel3._
 import chisel3.util._
 import scala.math._
 
-class InverseFFT(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: Int = 8, val pipeline: Boolean = true) extends Module {
+class InverseFFT(
+    val fftSize: Int = 8, 
+    val width: Int = 16, 
+    val binaryPoint: Int = 8, 
+    val pipeline: Boolean = true,
+    val architecture: String = "GS"
+    ) extends Module {
     def isPow2(x: Int): Boolean = (x & (x - 1)) == 0
     require(fftSize >= 2 && isPow2(fftSize), "FFT size must be a power of 2 and >= 2")
     val totalTwiddleCount = ButterflyNUtils.calcTwiddleCount(fftSize)
@@ -14,7 +20,7 @@ class InverseFFT(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: Int
     })
 
     // Instantiate FFT core
-    val fftCore = Module(new ButterflyN(fftSize, width, binaryPoint, pipeline))
+    val fftCore = Module(new ButterflyN(fftSize, width, binaryPoint, pipeline, architecture))
 
     // Forward twiddles from IO to internal FFT core, flipping imaginary sign for IFFT
     for (i <- 0 until totalTwiddleCount) {

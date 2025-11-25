@@ -5,10 +5,6 @@ import utils.FixedPointUtils
 import verifier.ScalaFFTVerifier
 import utils.ChunkUtils
 
-/**
-  * End-to-end test for UartedFFT: feed complex numbers through RxUART -> ComplexReciver -> FFT -> ComplexTransmitter -> TxUART
-  * This test focuses on dataflow and integration, not full UART bit-level timing.
-  */
 class UartedFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "UartedFFT"
 
@@ -20,8 +16,9 @@ class UartedFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
     val binaryPoint = 8
     val n = 2
     val pipeline = true
+    val architecture = "GS"
 
-    test(new UartedFFT(baudRate, clockFreq, width, binaryPoint, n, pipeline)) { dut =>
+    test(new UartedFFT(baudRate, clockFreq, width, binaryPoint, n, pipeline, architecture)) { dut =>
       // Set timeout higher than default for UART test
       dut.clock.setTimeout(1000000)
       dut.io.rts.poke(true.B)

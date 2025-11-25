@@ -3,7 +3,7 @@ import chisel3.util._
 import scala.math._
 import utils.FixedPointUtils
 
-class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int, val pipeline: Boolean = false) extends Module {
+class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int, val pipeline: Boolean = false, val architecture: String = "GS") extends Module {
     def isPow2(x: Int): Boolean = (x & (x - 1)) == 0
     require(n >= 2 && isPow2(n), "N must be a power of 2 and >= 2")
     
@@ -20,46 +20,90 @@ class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int, val pipeline:
         // Output complex numbers
         val out = Output(Vec(n, new ComplexFixedPoint.Complex(width, binaryPoint)))
     })
-
-    // First stage butterflies
-    val butterflyS1 = VecInit(Seq.fill(halfN)(Module(new Butterfly(width, binaryPoint, pipeline)).io))
-    
-    // Connect first stage butterflies
-    for (i <- 0 until halfN) {
-        butterflyS1(i).in0 := io.in(i)
-        butterflyS1(i).in1 := io.in(i + halfN)
-        butterflyS1(i).twiddle := io.twiddles(i)
-    }
-    
-    if (n == 2) {
-        // For N=2, directly connect outputs as there's no further stage
-        io.out(0) := butterflyS1(0).out0
-        io.out(1) := butterflyS1(0).out1
-    } else {
-        // Second stage: two halfN-point FFTs
-        val butterflyS2 = VecInit(Seq.fill(2)(Module(new ButterflyN(halfN, width, binaryPoint, pipeline)).io))
-
-        // Calculate twiddle factor distribution for recursive calls
-        val recursiveTwiddleCount = ButterflyNUtils.calcTwiddleCount(halfN)
-
-        // Connect inputs to recursive FFTs
+    if (architecture == "GS"){
+        // First stage butterflies
+        val butterflyS1 = VecInit(Seq.fill(halfN)(Module(new Butterfly(width, binaryPoint, pipeline, architecture)).io))
+        
+        // Connect first stage butterflies
         for (i <- 0 until halfN) {
-            butterflyS2(0).in(i) := butterflyS1(i).out0
-            butterflyS2(1).in(i) := butterflyS1(i).out1
+            butterflyS1(i).in0 := io.in(i)
+            butterflyS1(i).in1 := io.in(i + halfN)
+            butterflyS1(i).twiddle := io.twiddles(i)
         }
         
-        // Distribute remaining twiddle factors to recursive FFTs
-        for (i <- 0 until recursiveTwiddleCount) {
-            butterflyS2(0).twiddles(i) := io.twiddles(halfN + i)
-            butterflyS2(1).twiddles(i) := io.twiddles(halfN + recursiveTwiddleCount + i)
+        if (n == 2) {
+            // For N=2, directly connect outputs as there's no further stage
+            io.out(0) := butterflyS1(0).out0
+            io.out(1) := butterflyS1(0).out1
+        } else {
+            // Second stage: two halfN-point FFTs
+            val butterflyS2 = VecInit(Seq.fill(2)(Module(new ButterflyN(halfN, width, binaryPoint, pipeline, architecture)).io))
+
+            // Calculate twiddle factor distribution for recursive calls
+            val recursiveTwiddleCount = ButterflyNUtils.calcTwiddleCount(halfN)
+
+            // Connect inputs to recursive FFTs
+            for (i <- 0 until halfN) {
+                butterflyS2(0).in(i) := butterflyS1(i).out0
+                butterflyS2(1).in(i) := butterflyS1(i).out1
+            }
+            
+            // Distribute remaining twiddle factors to recursive FFTs
+            for (i <- 0 until recursiveTwiddleCount) {
+                butterflyS2(0).twiddles(i) := io.twiddles(halfN + i)
+                butterflyS2(1).twiddles(i) := io.twiddles(halfN + recursiveTwiddleCount + i)
+            }
+
+            // Connect outputs with bit-reversed order
+            for (i <- 0 until halfN) {
+                io.out(2*i) := butterflyS2(0).out(i)
+                io.out(2*i + 1) := butterflyS2(1).out(i)
+            }
+        }
+    } else if (architecture == "CT") {
+        // Second stage butterflies
+        val butterflyS2 = VecInit(Seq.fill(halfN)(Module(new Butterfly(width, binaryPoint, pipeline, architecture)).io))
+
+        // Connect second stage butterflies
+        for (i <- 0 until halfN) {
+            io.out(i) := butterflyS2(i).out0
+            io.out(i + halfN) := butterflyS2(i).out1
+            butterflyS2(i).twiddle := io.twiddles(i)
         }
 
-        // Connect outputs with bit-reversed order
-        for (i <- 0 until halfN) {
-            io.out(2*i) := butterflyS2(0).out(i)
-            io.out(2*i + 1) := butterflyS2(1).out(i)
-        }
+        if (n == 2) {
+            // For N=2, directly connect inputs as there's no prior stage
+            butterflyS2(0).in0 := io.in(0)
+            butterflyS2(0).in1 := io.in(1)
+        } else {
+            // First stage: two halfN-point FFTs
+            val butterflyS1 = VecInit(Seq.fill(2)(Module(new ButterflyN(halfN, width, binaryPoint, pipeline, architecture)).io))
+
+            // Calculate twiddle factor distribution for recursive calls
+            val recursiveTwiddleCount = ButterflyNUtils.calcTwiddleCount(halfN)
+
+            // Connect inputs to recursive FFTs
+            for (i <- 0 until halfN) {
+                butterflyS1(0).in(i) := io.in(2*i)
+                butterflyS1(1).in(i) := io.in(2*i + 1)
+            }
+            
+            // Distribute remaining twiddle factors to recursive FFTs
+            for (i <- 0 until recursiveTwiddleCount) {
+                butterflyS1(0).twiddles(i) := io.twiddles(halfN + i)
+                butterflyS1(1).twiddles(i) := io.twiddles(halfN + recursiveTwiddleCount + i)
+            }
+
+            // Connect outputs of first stage to second stage butterflies
+            for (i <- 0 until halfN) {
+                butterflyS2(i).in0 := butterflyS1(0).out(i)
+                butterflyS2(i).in1 := butterflyS1(1).out(i)
+            }
+        }        
+    } else {
+        throw new Exception("Unsupported architecture type. Use 'CT' for Cooley-Tukey or 'GS' for Gentleman-Sande.")
     }
+
 }
 
 // Helper object for twiddle factor calculations

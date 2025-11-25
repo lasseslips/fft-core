@@ -5,7 +5,8 @@ class BufferedFFT(
         val n : Int,
         val width: Int, 
         val binaryPoint: Int, 
-        val pipeline : Boolean
+        val pipeline : Boolean,
+        val architecture: String = "GS"
     ) extends Module {
 
     require(width % 8 == 0, "Width must be a multiple of 8 to align with byte boundaries.")
@@ -25,7 +26,7 @@ class BufferedFFT(
     val totalTwiddleCount = ButterflyNUtils.calcTwiddleCount(n)
     val twiddlesInt = ButterflyNUtils.generateTwiddleFactors(n)
     val twiddles = ButterflyNUtils.twiddlesToFixedPoint(twiddlesInt, width, binaryPoint)
-    val interfacedFFT = Module(new InterfacedFFT(n, width, binaryPoint, pipeline, twiddles))
+    val interfacedFFT = Module(new InterfacedFFT(n, width, binaryPoint, pipeline, twiddles, architecture))
 
     // IO connections
     io.in <> deSerializingBuffer.io.inputChannel

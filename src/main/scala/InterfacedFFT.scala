@@ -6,7 +6,8 @@ class InterfacedFFT(
     val width: Int, 
     val binaryPoint: Int, 
     val pipeline : Boolean,
-    val twiddles: Seq[(BigInt, BigInt)]
+    val twiddles: Seq[(BigInt, BigInt)],
+    val architecture: String = "GS"
     ) extends Module {
 
     val io = IO(new Bundle {
@@ -14,7 +15,7 @@ class InterfacedFFT(
         val out = Decoupled(Vec(n, new ComplexFixedPoint.Complex(width, binaryPoint)))
     })
 
-    val fftCore = Module(new ButterflyN(n, width, binaryPoint, pipeline))
+    val fftCore = Module(new ButterflyN(n, width, binaryPoint, pipeline, architecture))
 
     for (idx <- twiddles.indices) {
         val real = twiddles(idx)._1

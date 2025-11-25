@@ -3,7 +3,15 @@ import chisel3.util._
 import scala.math._
 import verifier.FFTTestCase
 
-class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: Int = 8, val pipeline: Boolean = true, val testCases: Seq[FFTTestCase] = Seq()) extends Module {
+class FPGATestTop(
+    val fftSize: Int = 8, 
+    val width: Int = 16, 
+    val binaryPoint: Int = 8, 
+    val pipeline: Boolean = true, 
+    val testCases: Seq[FFTTestCase] = Seq(),
+    val architecture: String = "GS"
+    ) extends Module {
+
     def isPow2(x: Int): Boolean = (x & (x - 1)) == 0
     require(fftSize >= 2 && isPow2(fftSize), "FFT size must be a power of 2 and >= 2")
     require(testCases.nonEmpty, "At least one test case must be provided")
@@ -57,10 +65,10 @@ class FPGATestTop(val fftSize: Int = 8, val width: Int = 16, val binaryPoint: In
     }
     
     // FFT core instance
-    val fftCore = Module(new ButterflyN(fftSize, width, binaryPoint, pipeline))
+    val fftCore = Module(new ButterflyN(fftSize, width, binaryPoint, pipeline, architecture))
 
     // IFFT core instance
-    val ifftCore = Module(new InverseFFT(fftSize, width, binaryPoint, pipeline))
+    val ifftCore = Module(new InverseFFT(fftSize, width, binaryPoint, pipeline, architecture))
 
     // Assign twiddle factors
     val totalTwiddleCount = ButterflyNUtils.calcTwiddleCount(fftSize)

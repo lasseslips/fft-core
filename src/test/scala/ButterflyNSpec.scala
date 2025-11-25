@@ -11,8 +11,8 @@ class ButterflyNSpec extends AnyFlatSpec with ChiselScalatestTester {
     nums.map { case (re, im) => f"(${re}%.5f,${im}%.5f)" }.mkString(", ")
   }
 
-  def testFFTWithSize(n: Int, width: Int, binaryPoint: Int, numTests: Int = 5, pipeline: Boolean = false): Unit = {
-    test(new ButterflyN(n, width, binaryPoint, pipeline)) { dut =>
+  def testFFTWithSize(n: Int, width: Int, binaryPoint: Int, numTests: Int = 5, pipeline: Boolean = false, architecture: String = "GS"): Unit = {
+    test(new ButterflyN(n, width, binaryPoint, pipeline, architecture)) { dut =>
       println(s"Testing ${n}-point FFT against original ButterflyN and Scala Breeze FFT")
 
       if (ScalaFFTVerifier.isBreezeAvailable) {
@@ -185,6 +185,38 @@ class ButterflyNSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   "ButterflyNSpec" should "match Breeze FFT results for 16-point FFT (pipelined)" in {
     testFFTWithSize(16, 32, 16, 3, true)
+  }
+
+  "ButterflyNSpec" should "match Breeze FFT results for 2-point FFT (Cooley-Tukey, non-pipelined)" in {
+    testFFTWithSize(2, 16, 8, 5, false, "CT")
+  }
+
+  "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT (Cooley-Tukey, non-pipelined)" in {
+    testFFTWithSize(4, 16, 8, 5, false, "CT")
+  }
+
+  "ButterflyNSpec" should "match Breeze FFT results for 8-point FFT (Cooley-Tukey, non-pipelined)" in {
+    testFFTWithSize(8, 16, 8, 5, false, "CT")
+  }
+
+  "ButterflyNSpec" should "match Breeze FFT results for 16-point FFT (Cooley-Tukey, non-pipelined)" in {
+    testFFTWithSize(16, 32, 16, 3, false, "CT")
+  }
+
+  "ButterflyNSpec" should "match Breeze FFT results for 2-point FFT (Cooley-Tukey, pipelined)" in {
+    testFFTWithSize(2, 16, 8, 5, true, "CT")
+  }
+
+  "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT (Cooley-Tukey, pipelined)" in {
+    testFFTWithSize(4, 16, 8, 5, true, "CT")
+  }
+
+  "ButterflyNSpec" should "match Breeze FFT results for 8-point FFT (Cooley-Tukey, pipelined)" in {
+    testFFTWithSize(8, 16, 8, 5, true, "CT")
+  }
+
+  "ButterflyNSpec" should "match Breeze FFT results for 16-point FFT (Cooley-Tukey, pipelined)" in {
+    testFFTWithSize(16, 32, 16, 3, true, "CT")
   }
 
 }

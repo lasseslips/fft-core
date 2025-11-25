@@ -7,7 +7,9 @@ class UartedFFT(
     val width: Int, 
     val binaryPoint: Int, 
     val n : Int,
-    val pipeline : Boolean) extends Module {
+    val pipeline : Boolean,
+    val architecture: String
+    ) extends Module {
 
     val io = IO(new Bundle {
         val rx = Input(Bool())
@@ -19,7 +21,7 @@ class UartedFFT(
     val rxUart = Module(new communication.UartRx(clockFreq, baudRate))
     val txUart = Module(new communication.UartTx(clockFreq, baudRate))
 
-    val fft = Module(new BufferedFFT(n, width, binaryPoint, pipeline))
+    val fft = Module(new BufferedFFT(n, width, binaryPoint, pipeline, architecture))
 
     // Connect RX UART to Complex Receiver
     rxUart.io.rxd := io.rx

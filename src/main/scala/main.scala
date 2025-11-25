@@ -7,6 +7,7 @@ object Main extends App {
   val width = 16
   val binaryPoint = 8
   val pipeline = true
+  val architecture = "GS"
 
   val baudRate = 115200
   val clockFreq = 100_000_000 // 100 MHz
@@ -17,6 +18,6 @@ object Main extends App {
       FFTTestData.generateTestCase(fftSize, "dc", width, binaryPoint),
       FFTTestData.generateTestCase(fftSize, "random", width, binaryPoint)
   )
-  //emitVerilog(new FPGATestTop(fftSize, width, binaryPoint, pipeline, testCases), Array("--target-dir", "verilog"))
-  emitVerilog(new UartedFFT(baudRate, clockFreq, width, binaryPoint, fftSize, pipeline), Array("--target-dir", "verilog"))
+  //emitVerilog(new FPGATestTop(fftSize, width, binaryPoint, pipeline, testCases, architecture), Array("--target-dir", "verilog"))
+  emitVerilog(new UartedFFT(baudRate, clockFreq, width, binaryPoint, fftSize, pipeline, architecture), Array("--target-dir", "verilog"))
 }
