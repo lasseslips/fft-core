@@ -221,6 +221,14 @@ As floating-point arithmetic is an expensive operation in hardware, this design 
 The use of fixed-point arithmetic introduces quantization errors, which can accumulate through the stages of the FFT. 
 
 ## Design and Implementation
+Two general approaches are clear for implementing the FFT. One is an unrolled architecture, where all butterflies and stages are instantiated in parallel, allowing for maximum throughput at the cost of increased resource usage. The other is a iterative architecture, where a single butterfly unit is reused across multiple clock cycles to process the FFT in stages, reducing resource usage at the cost of throughput.
+
+This project opted for the former, unrolled architecture, as it allows for showcasing Chisel's capabilites in recursively generating hardware structures, in this case the butterfly stages. This is optimized for small to medium FFT sizes where resource usage is not prohibitive, and where high throughput is desired. If one wanted to target very large FFT sizes an iterative architecture would likely be more appropriate, though it also comes with complex memory mapping logic to ensure data is fed to the butterfly units in the correct order, as opposed to the generative unrolled architecture where the data flow is hardwired.
+
+The implementation is structured around a generic [ButterflyN module](./src/main/scala/ButterflyN.scala) that recursively instantiates smaller Butterfly modules until reaching the base case of a [Butterfly module](.src/main/scala/Butterfly.scala) that implements the N=2 butterfly operation. 
+The design supports both DIT and DIF architectures, selectable via a parameter, with Twiddle factors being supplied as an input, allowing for flexibility in twiddle factor generation and storage. Currently the example designs precompute the twiddle factors in Scala and supply them as a Vec to the top-level FFT module getting them hardcoded into the generated RTL.
+
+An important part of unrolled designs is pipelining to ensure high clock frequencies can be achieved. Epcially in the FFT, where the data must traverse multiple stages of butterflies as N increases, pipelining is crucial to maintain throughput. In this design, pipeline registers are inserted inside the Butterfly module, both after the multiplier and another after the adders/subtractors. As there is only one multiplier and two adders/subtractors per butterfly, a register is inserted to balance the pipeline stage. 
 
 ## Testing
 
