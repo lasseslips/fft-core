@@ -122,11 +122,12 @@ $Im\{X_1\} = (Re\{x_0\} - Re\{x_1\}) \cdot Im\{W_N^k\} + (Im\{x_0\} - Im\{x_1\})
 
 This also contains four unique additions/subtractions and four multiplications.
 
-The two approaches can be drawn out as follows:
+The two approaches can be drawn out as follows for respectively DIT and DIF, noting operators are complex:
 
-[DIF approach](./diagrams/butterflies-DIF.drawio.png)
+![DIT approach](./diagrams/butterflies-DIT.drawio.png)
 
-[DIT approach](./diagrams/butterflies-DIT.drawio.png)
+![DIF approach](./diagrams/butterflies-DIF.drawio.png)
+
 
 
 The arithmetic cost of the two approaches is clearly the same. However, the data flow and ordering of inputs and outputs differ, which can impact the overall FFT architecture.
@@ -199,11 +200,19 @@ $ X(3) = B_0 - W_4^1 \cdot B_1 = (x(0) - x(1)) - (-j) \cdot (x(2) - x(3)) = x(0)
 
 
 #### General case
-Generalizing this to a arbitrary power-of-two size N, the main pattern for a DIT FFT is to first generate two of the half-size (N/2) FFTs from the even and odd indexed inputs using butterflies, and then combine these results with another stage of butterflies that apply the appropriate twiddle factors. This process is repeated log2(N) times, halving the problem size at each stage until reaching the base case of N=2 butterflies, which is taken as seen above and is the fundamental building block. 
+Generalizing this to a arbitrary power-of-two size N, the main pattern for a DIT FFT is to first generate two of the half-size (N/2) FFTs from the even and odd indexed inputs using butterflies, and then combine these results with another stage of butterflies that apply the appropriate twiddle factors. This process is repeated log2(N) times, halving the problem size at each stage until reaching the base case of N=2 butterflies, which is taken as seen above and is the fundamental building block.
 
 The DIF approach follows a similar recursive pattern, but starts with butterflies on adjacent input pairs and then applies half-size FFTs to the resulting sums and differences, incorporating twiddle factors in the second half-size FFT stage. This process is also repeated log2(N) times until reaching the N=2 base case.
 
+This figure illustrates the general build up in the two different approaches, with a function Butterfly(N) representing the N-point FFT:
 
+![FFT stages](./diagrams/butterflies-Approaches.drawio.png)
+
+It should be noted that twiddle factors also become more complex as N increases, becoming roots of unity in the complex plane. I.e. for N=16, one twiddle factors would be:
+
+$ W_{16}^1 = e^{-j \frac{2 \pi}{16} 1} = \cos\left(\frac{2 \pi}{16}\right) - j \sin\left(\frac{2 \pi}{16}\right) = 0.92388 - j \cdot 0.38268 $
+
+This results in the need for a way of representing decimal numbers in hardware, which is discussed in the next section.
 
 ## Number Representation
 As floating-point arithmetic is an expensive operation in hardware, this design opts for fixed-point representation of numbers. Fixed-point numbers are represented with a total bit width and a specified number of fractional bits, allowing for efficient arithmetic operations while maintaining a balance between range and precision. It can be represented in Q(m.n) format, where m is the number of integer bits (including the sign bit) and n is the number of fractional bits.
