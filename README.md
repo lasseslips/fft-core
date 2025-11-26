@@ -3,7 +3,7 @@ This repository contains a library for generating RTL for the Fast Fourier Trans
 
 Created as part of the "[Agile Hardware Design](https://github.com/schoeberl/agile-hw)" ([02201](https://kurser.dtu.dk/course/02201)) course at DTU.
 
-This readme is best read with support for LaTeX math rendering enabled (such as in VSCode).
+This readme is best read with support for LaTeX math rendering enabled (such as in VSCode's Preview).
 
 ### Creators : Group 8
 - Andreas Lildballe (s214387, [DreasL02](https://github.com/DreasL02))
@@ -31,6 +31,29 @@ Elements of the UART implementation has previously been handed in and is not ori
   - Depends on having Vivado installed and accessible through WSL on Windows systems.
 
 ### Repository Structure
+The repository follows a standard SBT-based Scala project structure, seperating source code and tests:
+
+```
+fft-core/
+├── src/
+│   ├── main/
+│   │   ├── scala/
+│   │   │   ├── buildtools/ - Scripts for building and synthesizing designs
+│   │   │   ├── communication/ - UART and other communication protocol modules
+│   │   │   ├── uart/ - A UART client to interface with the FFT
+│   │   │   ├── utils/ - Utility functions and classes
+│   │   │   ├── verifier/ - Verification and testing modules for getting golden model results
+|   │   │   ├── Various modules and implementations, including Butterfly and FFT modules. Complex.scala includes complex number operations.
+│   │   ├── tcl/
+
+
+
+
+
+
+
+
+```
 
 ### Getting Started
 
@@ -253,22 +276,19 @@ One particular challenge was to account for pipeling latencies in the tests, esp
 
 For [testing the UART interfaced module](./src/test/scala/UartedFTSpec.scala) important considerations was to reduce the test time as much as possible, as sending data byte-by-byte through a UART interface is inherently slow. To achieve this, the baudrate was set to 1 and the frequency to 100. This allowed for reducing the amount of clock cycles per byte sent, speeding up the overall test time significantly, though still resulting in tests taking multiple minutes to complete.
 
-## Interfacing 
-
 ## Synthesis and Performance
 
 ## Project Agility
-As the project was conducted as part of the Agile Hardware Design course, we adopted agile methodologies to manage our development process effectively. We utilized iterative development and continuous integration practices to ensure that our design evolved in response to the project requirements and time.
+As the project was conducted as part of the Agile Hardware Design course, we adopted agile methodologies to manage our development process effectively and we would like to also touch upon those. We utilized iterative development and continuous integration practices to ensure that our design evolved in response to the project requirements and time.
 
-This is reflected in the current structure of the Butterfly modules. Files such as [Butterfly2.scala](./src/main/scala/Butterfly2.scala), [Butterfly4.scala](./src/main/scala/Butterfly4.scala), and [Butterfly8.scala](./src/main/scala/Butterfly8.scala) were developed iterating upon the previous and allowed for formalizing patterns and abstractions that could be reused in the final [ButterflyN.scala](./src/main/scala/ButterflyN.scala) implementation. The older patterns allowed for quick validation once the generative implementation was complete as it could be tested with known-good smaller instances.
+This is reflected in the current structure of the Butterfly modules. Files such as [Butterfly2.scala](./src/main/scala/Butterfly2.scala), [Butterfly4.scala](./src/main/scala/Butterfly4.scala), and [Butterfly8.scala](./src/main/scala/Butterfly8.scala) were developed iterating upon the previous and allowed for formalizing patterns and abstractions that could be reused in the final [ButterflyN.scala](./src/main/scala/ButterflyN.scala) implementation. The older patterns allowed for quick validation once the generative implementation was complete as it could be tested with known-good smaller instances. The tests were then further expanded to cover a wider range of sizes.
 
 In [our continuous integration pipeline](.github/workflows/scala.yml), we set up automated testing using ChiselTest to validate our FFT implementation on every commit. This would in theory allow us to catch mistakes early and ensure that new features did not break existing functionality, but it only actually caught something during a brief moment where Python was required for a test and not installed on the CI runners.
 
 This is probabily due to the relatively small group size and project scope, which made communication and coordination easier without the need for extensive agile practices. However, the experience provided valuable insights into how agile methodologies can be applied in hardware design projects.
 
-One aspect that was a downside of the continous integration setup was that it developed a very localized setup, where something was only commited once it fully worked (largely due to the tests being developed alongside, if not before, the actual implementation). Perhaps something like branching could be used in future projects, but that also adds overhead. 
+One aspect that was a downside of the continous integration setup was that it developed a very localized setup, where something was only commited once it fully worked (largely due to the tests being developed alongside, if not before, the actual implementation). Perhaps something like branching could be used in future projects, but that also adds overhead and risk of complex merge conflicts.
 ## Conclusion and Future Work
 
-## References
 
-https://dsp-book.narod.ru/FFTBB/0270_PDF_C03.pdf
+## References
