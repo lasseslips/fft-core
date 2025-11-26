@@ -214,6 +214,13 @@ $ W_{16}^1 = e^{-j \frac{2 \pi}{16} 1} = \cos\left(\frac{2 \pi}{16}\right) - j \
 
 This results in the need for a way of representing decimal numbers in hardware, which is discussed in the next section.
 
+Another supported algortihm that is an easy extention is the Inverse Fast Fourier Transform (IFFT). The IFFT is defined by the equation:
+
+$ x(n) = \frac{1}{N} \sum_{k=0}^{N-1} X(k) \cdot e^{j \frac{2 \pi}{N} k n} \quad \text{for } n = 0, 1, \ldots, N-1 $
+
+The IFFT can be implemented by simply modifying the FFT algorithm to use the complex conjugates of the twiddle factors and scaling the output by 1/N. This involves changing the sign of the exponent in the twiddle factor calculation:
+$ W_N^{-k} = e^{j \frac{2 \pi}{N} k}$.
+
 ## Number Representation
 As floating-point arithmetic is an expensive operation in hardware, this design opts for fixed-point representation of numbers. Fixed-point numbers are represented with a total bit width and a specified number of fractional bits, allowing for efficient arithmetic operations while maintaining a balance between range and precision. It can be represented in Q(m.n) format, where m is the number of integer bits (including the sign bit) and n is the number of fractional bits.
 
@@ -229,6 +236,13 @@ The implementation is structured around a generic [ButterflyN module](./src/main
 The design supports both DIT and DIF architectures, selectable via a parameter, with Twiddle factors being supplied as an input, allowing for flexibility in twiddle factor generation and storage. Currently the example designs precompute the twiddle factors in Scala and supply them as a Vec to the top-level FFT module getting them hardcoded into the generated RTL.
 
 An important part of unrolled designs is pipelining to ensure high clock frequencies can be achieved. Epcially in the FFT, where the data must traverse multiple stages of butterflies as N increases, pipelining is crucial to maintain throughput. In this design, pipeline registers are inserted inside the Butterfly module, both after the multiplier and another after the adders/subtractors. As there is only one multiplier and two adders/subtractors per butterfly, a register is inserted to balance the pipeline stage. 
+This results in a latency of 2 clock cycles per butterfly stage, leading to a total latency of $2 \cdot \log_2(N)$ clock cycles for the entire FFT operation. 
+
+The IFFT extension is implemented by a wrapper module that simply conjugates the twiddle factors and scales the output by 1/N. The 1/N scaling can be efficiently implemented using bit-shifting when N is a power of two, which is the case in this design.
+
+To verify the functionality of the implementation, simulation is utilized, as described in the Testing section, but a on-FPGA test platform was also designed to evaluate real-world performance. This platform stores a series of test vectors in a block RAM, which are then passed onto the FFT. The results are then both stored back into another block RAM, and passed to a IFFT implementation. The IFFT results are then compared to the original input vectors and the FFT results are compared to precomputed expected results. The precomputed expected results are generated using the [Scala Breeze](https://github.com/scalanlp/breeze) library (and in earlier versions, Python's numpy). The comparisons keep in mind that quantization errors may occur due to the fixed-point representation and as such allow for a small error margin that is configurable but currently based on the Q-format used.
+
+We also provide a [byte buffered version of the FFT module](./src/main/scala/BufferedFFT.scala) that can interface with byte-based communication protocols, such as UART. This version includes additional logic to handle the buffering and conversion of byte streams into the fixed-point format required by the FFT module, packaged into the wrapped [interfaced module](.src/InterfacedFFT.scala). Utilized in the buffered module is a ready/valid interface to manage the data flow. An example mapping to a UART module (see [communication readme for source](./src/main/scala/communication/README.md)) is also [provided](./src/main/scala/UartedFFT.scala) and has been tested on FPGA.
 
 ## Testing
 
