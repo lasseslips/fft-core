@@ -1,0 +1,13 @@
+{
+  "base_parameters": {
+    "fftSize": 8,
+    "width": 16,
+    "binaryPoint": 8,
+    "pipeline": true,
+    "architecture": "GS"
+  },
+  "parameter_sweep": {
+    "type": "fft_size",
+    "values": [4, 8, 16, 32]
+  }
+}

@@ -3,6 +3,8 @@ This repository contains a library for generating RTL for the Fast Fourier Trans
 
 Created as part of the "[Agile Hardware Design](https://github.com/schoeberl/agile-hw)" ([02201](https://kurser.dtu.dk/course/02201)) course at DTU.
 
+This readme is best read with support for LaTeX math rendering enabled (such as in VSCode).
+
 ### Creators : Group 8
 - Andreas Lildballe (s214387, [DreasL02](https://github.com/DreasL02))
 - Lasse Slipsager (s224007, [lasseslips](https://github.com/lasseslips))
@@ -66,11 +68,12 @@ This can be further simplified using the periodicity and symmetry properties of 
 
 $ W_N^k = e^{-j \frac{2 \pi}{N} k} $
 
+The syntax of the twidlle factors can be read as "W sub N to the power of k", where N is the total number of points in the FFT and k is the index of the twiddle factor.
+
 $ X(k) = E(k) + W_N^k \cdot O(k) $
 
 
-
-Something about butterflys
+To efficiently combine the two half-size DFT results E(k) and O(k) into the full-size output X(k), the FFT uses small, fixed datapath units that perform the pairwise additions/subtractions and twiddle-factor multiplications required by the recurrence. These units are called "butterflies": each butterfly operates on two complex samples and a twiddle factor to produce two transformed outputs. By arranging butterflies in stages and connecting them according to either decimation-in-time (DIT) or decimation-in-frequency (DIF) ordering, the full N-point FFT is built from log2(N) stages of simpler operations. The next section describes the butterfly building blocks and the common architectures used to implement them in hardware.
 
 ### Butterfly architectures
 The butterfly components are defined as the basic computing units, operating on two input samples, a twiddle factor, and producing two output samples. Two common architectures are the Cooley-Tukey Butterfly and the Gentleman-Sande Butterfly.
@@ -105,7 +108,7 @@ $Re\{X_1\} = Re\{x_0\} - Re\{W_N^k\} \cdot Re\{x_1\} + Im\{W_N^k\} \cdot Im\{x_1
 
 $Im\{X_1\} = Im\{x_0\} - Re\{W_N^k\} \cdot Im\{x_1\} - Im\{W_N^k\} \cdot Re\{x_1\}$
 
-This contains four unique additions/subtractions and four multiplications.
+This contains four unique additions/subtractions and four multiplications. 
 
 And for Gentleman-Sande:
 
@@ -119,7 +122,87 @@ $Im\{X_1\} = (Re\{x_0\} - Re\{x_1\}) \cdot Im\{W_N^k\} + (Im\{x_0\} - Im\{x_1\})
 
 This also contains four unique additions/subtractions and four multiplications.
 
+The two approaches can be drawn out as follows:
+
+[DIF approach](./diagrams/butterflies-DIF.drawio.png)
+
+[DIT approach](./diagrams/butterflies-DIT.drawio.png)
+
+
 The arithmetic cost of the two approaches is clearly the same. However, the data flow and ordering of inputs and outputs differ, which can impact the overall FFT architecture.
+
+### Building the FFT from butterflies 
+Using the butterfly units, the FFT can be constructed in stages. Each stage consists of multiple butterflies operating in parallel on different pairs of inputs. The number of stages is determined by the size of the FFT (N), specifically log2(N) stages. The exact wiring and twiddle factor assignments will depend on whether the Cooley-Tukey or Gentleman-Sande approach is used for the butterflies. In the latter case the FFT is referred to as a Decimation-In-Frequency (DIF) FFT, while the former is known as a Decimation-In-Time (DIT) FFT.
+The build up of the stages can be understood through small examples:
+
+#### N = 2
+With N=2, the FFT can be mathematically represented as (writing out the sums):
+
+$ X(0) = x(0) + x(1) \cdot e^{-j \frac{2 \pi}{2} 0 \cdot 1} = x(0) + x(1) $
+
+$ X(1) = x(0) - x(1) \cdot e^{-j \frac{2 \pi}{2} 1 \cdot 1} = x(0) - x(1) $
+
+This is exactly what a single butterfly computes, given the twiddle factor will be respectively 1 and -1, and regardless of whether it is Cooley-Tukey or Gentleman-Sande. Thus, the N=2 FFT is simply one butterfly stage.
+
+#### N = 4
+For N=4, the FFT is mathematically represented as:
+
+$ X(0) = x(0) + x(1) \cdot e^{-j \frac{2 \pi}{4} 0 \cdot 1} + x(2) \cdot e^{-j \frac{2 \pi}{4} 0 \cdot 2} + x(3) \cdot e^{-j \frac{2 \pi}{4} 0 \cdot 3} = x(0) + x(1) + x(2) + x(3)$
+
+$ X(1) = x(0) + x(1) \cdot e^{-j \frac{2 \pi}{4} 1 \cdot 1} + x(2) \cdot e^{-j \frac{2 \pi}{4} 1 \cdot 2} + x(3) \cdot e^{-j \frac{2 \pi}{4} 1 \cdot 3} = x(0) + x(1) \cdot e^{-j \frac{2 \pi}{4} 1} + x(2) \cdot e^{-j \frac{2 \pi}{4} 2} + x(3) \cdot e^{-j \frac{2 \pi}{4} 3} = x(0) - x(1) \cdot j + x(2) - x(3) \cdot j $ 
+
+$ X(2) = x(0) + x(1) \cdot e^{-j \frac{2 \pi}{4} 2 \cdot 1} + x(2) \cdot e^{-j \frac{2 \pi}{4} 2 \cdot 2} + x(3) \cdot e^{-j \frac{2 \pi}{4} 2 \cdot 3} = x(0) + x(1) \cdot e^{-j \frac{2 \pi}{4} 2} + x(2) \cdot e^{-j \frac{2 \pi}{4} 4} + x(3) \cdot e^{-j \frac{2 \pi}{4} 6} = x(0) - x(1) + x(2) - x(3) $
+
+$ X(3) = x(0) + x(1) \cdot e^{-j \frac{2 \pi}{4} 3 \cdot 1} + x(2) \cdot e^{-j \frac{2 \pi}{4} 3 \cdot 2} + x(3) \cdot e^{-j \frac{2 \pi}{4} 3 \cdot 3} = x(0) + x(1) \cdot e^{-j \frac{2 \pi}{4} 3} + x(2) \cdot e^{-j \frac{2 \pi}{4} 6} + x(3) \cdot e^{-j \frac{2 \pi}{4} 9} = x(0) + x(1) \cdot j + x(2) - x(3) \cdot j $
+
+Here we need two stages. Depending on whether we use DIT or DIF, the arrangement of butterflies and twiddle factors will differ, but both approaches will utilize two butterflies with the same twiddle factors as in the N=2 case.
+
+For the DIT approach, we first compute two 2-point DFTs, identical to those used in the N=2 example above, on the even and odd indexed samples. This will compute intermedaite results:
+
+$ E(0) = x(0) + x(2) $
+
+$ E(1) = x(0) - x(2) $
+
+$ O(0) = x(1) + x(3) $
+
+$ O(1) = x(1) - x(3) $
+
+These are then combined using butterflies with the twiddle factors $W_4^0 = 1$ and $W_4^1 = e^{-j \frac{2 \pi}{4} 1} = -j$ to produce the final outputs:
+
+$ X(0) = E(0) + W_4^0 \cdot O(0) = (x(0) + x(2)) + 1 \cdot (x(1) + x(3)) = x(0) + x(1) + x(2) + x(3) $
+
+$ X(1) = E(1) + W_4^1 \cdot O(1) = (x(0) - x(2)) + (-j) \cdot (x(1) - x(3)) = x(0) - j \cdot x(1) + x(2) + j \cdot x(3) $
+
+$ X(2) = E(0) - W_4^0 \cdot O(0) = (x(0) + x(2)) - 1 \cdot (x(1) + x(3)) = x(0) - x(1) + x(2) - x(3) $
+
+$ X(3) = E(1) - W_4^1 \cdot O(1) = (x(0) - x(2)) - (-j) \cdot (x(1) - x(3)) = x(0) + j \cdot x(1) - x(2) - j \cdot x(3) $
+
+For the DIF approach, we first apply butterflies to adjacent pairs of inputs:
+
+$ A_0 = x(0) + x(1) $
+
+$ B_0 = x(0) - x(1) $
+
+$ A_1 = x(2) + x(3) $
+
+$ B_1 = x(2) - x(3) $
+
+These intermediate results are then processed with two 2-point DFTs, where the second DFT incorporates the twiddle factors:
+
+$ X(0) = A_0 + W_4^0 \cdot A_1 = (x(0) + x(1)) + 1 \cdot (x(2) + x(3)) = x(0) + x(1) + x(2) + x(3) $
+
+$ X(1) = B_0 + W_4^1 \cdot B_1 = (x(0) - x(1)) + (-j) \cdot (x(2) - x(3)) = x(0) - j \cdot x(2) - x(1) + j \cdot x(3) $
+
+$ X(2) = A_0 - W_4^0 \cdot A_1 = (x(0) + x(1)) - 1 \cdot (x(2) + x(3)) = x(0) - x(2) + x(1) - x(3) $
+
+$ X(3) = B_0 - W_4^1 \cdot B_1 = (x(0) - x(1)) - (-j) \cdot (x(2) - x(3)) = x(0) + j \cdot x(2) - x(1) - j \cdot x(3) $
+
+
+#### General case
+Generalizing this to a arbitrary power-of-two size N, the main pattern for a DIT FFT is to first generate two of the half-size (N/2) FFTs from the even and odd indexed inputs using butterflies, and then combine these results with another stage of butterflies that apply the appropriate twiddle factors. This process is repeated log2(N) times, halving the problem size at each stage until reaching the base case of N=2 butterflies, which is taken as seen above and is the fundamental building block. 
+
+The DIF approach follows a similar recursive pattern, but starts with butterflies on adjacent input pairs and then applies half-size FFTs to the resulting sums and differences, incorporating twiddle factors in the second half-size FFT stage. This process is also repeated log2(N) times until reaching the N=2 base case.
+
 
 
 ## Number Representation

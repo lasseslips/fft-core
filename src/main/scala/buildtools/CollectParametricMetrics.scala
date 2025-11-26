@@ -17,6 +17,7 @@ object CollectParametricMetrics {
     width: String,
     binaryPoint: String,
     pipeline: String,
+    architecture: String,
     wns: Option[Double],
     maxFreq: Option[Double],
     fftWns: Option[Double],
@@ -126,6 +127,7 @@ object CollectParametricMetrics {
         s.get("type") match {
           case Some("fft_size") => s.get("values").map { v => v.asInstanceOf[List[Any]].map(x => base + ("fftSize" -> x)) }.getOrElse(Seq(base))
           case Some("data_width") => s.get("values").map { v => v.asInstanceOf[List[Any]].map(x => base + ("width" -> x)) }.getOrElse(Seq(base))
+          case Some("architecture") => s.get("values").map { v => v.asInstanceOf[List[Any]].map(x => base + ("architecture" -> x)) }.getOrElse(Seq(base))
           case Some("pipeline") => s.get("values").map { v => v.asInstanceOf[List[Any]].map(x => base + ("pipeline" -> x)) }.getOrElse(Seq(base))
           case Some("multiple") =>
             val params = s.getOrElse("parameters", Map.empty).asInstanceOf[Map[String, List[Any]]]
@@ -146,6 +148,7 @@ object CollectParametricMetrics {
     val width = params.getOrElse("width", 16)
     val binaryPoint = params.getOrElse("binaryPoint", 8)
     val pipeline = params.getOrElse("pipeline", true)
+    val architecture = params.getOrElse("architecture", "GS").toString
     val content = s"""
 import chisel3._
 import verifier.FFTTestData
@@ -158,6 +161,7 @@ object Main extends App {
   val width = $width
   val binaryPoint = $binaryPoint
   val pipeline = ${pipeline.toString.toLowerCase}
+  val architecture = "$architecture"
   val testCases = Seq(
       FFTTestData.generateTestCase(fftSize, "impulse", width, binaryPoint),
       FFTTestData.generateTestCase(fftSize, "sinusoid", width, binaryPoint),
@@ -245,6 +249,7 @@ object Main extends App {
       params.getOrElse("width", "N/A").toString,
       params.getOrElse("binaryPoint", "N/A").toString,
       params.getOrElse("pipeline", "N/A").toString,
+      params.getOrElse("architecture", "N/A").toString,
       wns, maxFreq, fftWns, fftMaxFreq,
       luts, lutPct, ffs, ffPct, dsps, dspPct,
       fftLuts, fftLutPct, fftFfs, fftFfPct, fftDsps, fftDspPct,
@@ -255,13 +260,14 @@ object Main extends App {
   }
 
   def loadDefaultConfig(): Map[String, Any] = Map(
-    "base_parameters" -> Map("fftSize" -> 8, "width" -> 16, "binaryPoint" -> 8, "pipeline" -> true),
+    "base_parameters" -> Map("fftSize" -> 8, "width" -> 16, "binaryPoint" -> 8, "pipeline" -> true, "architecture" -> "GS"),
     "parameter_sweep" -> Map("type" -> "fft_size", "values" -> List(4, 8, 16))
   )
 
   def writeCsv(path: Path, results: Seq[Metrics]): Unit = {
     val header = Seq(
       "run", "fft_size", "data_width", "binary_point", "pipeline",
+      "architecture",
       "wns_ns", "max_frequency_mhz", "fft_wns_ns", "fft_max_frequency_mhz",
       "luts_used", "lut_percentage", "ffs_used", "ffs_percentage",
       "dsps_used", "dsp_percentage",
@@ -277,12 +283,13 @@ object Main extends App {
       results.foreach { r =>
         val row = Seq(
           r.run.toString, r.fftSize, r.width, r.binaryPoint, r.pipeline,
+          r.architecture,
           r.wns.map(_.toString).getOrElse(""), r.maxFreq.map(_.toString).getOrElse(""), r.fftWns.map(_.toString).getOrElse(""), r.fftMaxFreq.map(_.toString).getOrElse(""),
           r.luts.map(_.toString).getOrElse(""), r.lutPct.map(_.toString).getOrElse(""), r.ffs.map(_.toString).getOrElse(""), r.ffPct.map(_.toString).getOrElse(""),
           r.dsps.map(_.toString).getOrElse(""), r.dspPct.map(_.toString).getOrElse(""),
           r.fftLuts.map(_.toString).getOrElse(""), r.fftLutPct.map(_.toString).getOrElse(""), r.fftFfs.map(_.toString).getOrElse(""), r.fftFfPct.map(_.toString).getOrElse(""),
           r.fftDsps.map(_.toString).getOrElse(""), r.fftDspPct.map(_.toString).getOrElse(""),
-          "", "", "", r.success.toString
+          r.compileTime.map(_.toString).getOrElse(""), r.synthTime.map(_.toString).getOrElse(""), r.totalTime.map(_.toString).getOrElse(""), r.success.toString
         )
         pw.println(row.mkString(","))
       }
@@ -294,7 +301,6 @@ object Main extends App {
     var version: Option[String] = None
     var tcl: Option[String] = None
     var output = "parametric_results.csv"
-    // Vivado runner is always the Scala wrapper `RunVivadoScript`
     var runs: Option[Int] = None
     var i = 0
     while (i < args.length) {
@@ -326,9 +332,18 @@ object Main extends App {
         try {
           val parsed = ujson.read(raw)
           Some(ujsonToAny(parsed).asInstanceOf[Map[String, Any]])
-        } catch { case _: Exception => None }
-      } else None
+        } catch {
+          case e: Exception =>
+          System.err.println(s"Warning: Failed to parse config file $p: ${e.getMessage}. Using default config.")
+          None
+        }
+      } else {
+        System.err.println(s"Warning: Config file not found: $p. Using default config.")
+        None
+      }
     }.getOrElse(loadDefaultConfig())
+
+    println(s"Using configuration: $config")
 
     val parameterSets = runs.map(r => Seq.fill(r)(config("base_parameters").asInstanceOf[Map[String, Any]])).getOrElse(generateParameterSets(config))
 
@@ -355,6 +370,7 @@ object Main extends App {
             width = params.getOrElse("width", "N/A").toString,
             binaryPoint = params.getOrElse("binaryPoint", "N/A").toString,
             pipeline = params.getOrElse("pipeline", "N/A").toString,
+            architecture = params.getOrElse("architecture", "N/A").toString,
             wns = None,
             maxFreq = None,
             fftWns = None,

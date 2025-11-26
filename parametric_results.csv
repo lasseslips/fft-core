@@ -1,4 +1,0 @@
-run,fft_size,data_width,binary_point,pipeline,wns_ns,max_frequency_mhz,fft_wns_ns,fft_max_frequency_mhz,luts_used,lut_percentage,ffs_used,ffs_percentage,dsps_used,dsp_percentage,fft_luts_used,fft_lut_percentage,fft_ffs_used,fft_ffs_percentage,fft_dsps_used,fft_dsp_percentage,ifft_luts_used,ifft_lut_percentage,ifft_ffs_used,ifft_ffs_percentage,ifft_dsps_used,ifft_dsp_percentage,compile_time_s,synthesis_time_s,total_time_s,success
-1,4,16,8,true,1.981,124.70382840753211,2.158,127.51849018107625,1363,6.55,1174,2.82,3,3.33,114,0.5480769230769231,278,0.6682692307692308,3,3.3333333333333335,,,,true
-2,8,16,8,true,1.494,117.5640724194686,,,3166,15.22,3249,7.81,24,26.67,626,3.0096153846153846,1100,2.644230769230769,17,18.88888888888889,,,,true
-3,16,16,8,true,0.131,101.3273887931908,,,9799,47.11,8744,21.02,50,55.56,3219,15.475961538461538,3632,8.73076923076923,25,27.77777777777778,,,,true
