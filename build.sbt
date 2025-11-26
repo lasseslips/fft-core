@@ -15,3 +15,4 @@ libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.19.0" % "test"
 libraryDependencies += "org.scalanlp" %% "breeze" % "2.1.0" // for FFT verification
 libraryDependencies += "org.scalanlp" %% "breeze-natives" % "2.1.0" // for FFT verification
 libraryDependencies += "com.fazecast" % "jSerialComm" % "2.10.0" // for UART
+libraryDependencies += "com.lihaoyi" %% "ujson" % "3.1.0" // JSON parsing for build tools 

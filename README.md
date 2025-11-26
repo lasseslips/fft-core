@@ -25,7 +25,8 @@ Elements of the UART implementation has previously been handed in and is not ori
   - Possibility to supply inputs through a UART interface.
 - Comprehensive testbench for functional verification using ChiselTest.
 - FPGA test platform support for real-world performance evaluation.
-- Optional python/tcl building and synthesis scripts for evaluating performance on FPGA targets using Vivado.
+- Optional scala and tcl building and synthesis scripts for evaluating performance on FPGA targets using Vivado.
+  - Depends on having Vivado installed and accessible through WSL on Windows systems.
 
 ### Repository Structure
 
@@ -122,7 +123,10 @@ The arithmetic cost of the two approaches is clearly the same. However, the data
 
 
 ## Number Representation
+As floating-point arithmetic is an expensive operation in hardware, this design opts for fixed-point representation of numbers. Fixed-point numbers are represented with a total bit width and a specified number of fractional bits, allowing for efficient arithmetic operations while maintaining a balance between range and precision. It can be represented in Q(m.n) format, where m is the number of integer bits (including the sign bit) and n is the number of fractional bits.
 
+
+The use of fixed-point arithmetic introduces quantization errors, which can accumulate through the stages of the FFT. 
 
 ## Design and Implementation
 
@@ -135,7 +139,7 @@ The arithmetic cost of the two approaches is clearly the same. However, the data
 ## Project Agility
 As the project was conducted as part of the Agile Hardware Design course, we adopted agile methodologies to manage our development process effectively. We utilized iterative development and continuous integration practices to ensure that our design evolved in response to the project requirements and time.
 
-This is reflected in the current structure of the Butterfly modules. Files such as [Butterfly2.scala](./src/main/scala/Butterfly2.scala), [Butterfly4.scala](./src/main/scala/Butterfly4.scala), and [Butterfly8.scala](./src/main/scala/Butterfly8.scala) were developed iterating upon the previous and allowed for formalizing patterns and abstractions that could be reused in the final [ButterflyN.scala](./src/main/scala/ButterflyN.scala) implementation. The older patterns allowed for quick validation once the generative implementation was complete and ca
+This is reflected in the current structure of the Butterfly modules. Files such as [Butterfly2.scala](./src/main/scala/Butterfly2.scala), [Butterfly4.scala](./src/main/scala/Butterfly4.scala), and [Butterfly8.scala](./src/main/scala/Butterfly8.scala) were developed iterating upon the previous and allowed for formalizing patterns and abstractions that could be reused in the final [ButterflyN.scala](./src/main/scala/ButterflyN.scala) implementation. The older patterns allowed for quick validation once the generative implementation was complete as it could be tested with known-good smaller instances.
 
 In [our continuous integration pipeline](.github/workflows/scala.yml), we set up automated testing using ChiselTest to validate our FFT implementation on every commit. This would in theory allow us to catch mistakes early and ensure that new features did not break existing functionality, but it only actually caught something during a brief moment where Python was required for a test and not installed on the CI runners.
 

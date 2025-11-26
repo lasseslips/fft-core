@@ -1,9 +1,15 @@
+#!/usr/bin/env tclsh
 # https://projectf.io/posts/vivado-tcl-build-script/
+# Resolve repository root relative to this script so relative paths work
+set script_dir [file dirname [info script]]
+# src/main/tcl -> go up three levels to repo root
+set repo_root [file normalize [file join $script_dir ../../..]]
+
 # read design sources (add one line for each file)
-read_verilog -sv "../verilog/FPGATestTop.sv"
+read_verilog -sv [file join $repo_root verilog FPGATestTop.sv]
 
 # read constraints
-read_xdc "../constraints/basys3_test_harness.xdc"
+read_xdc [file join $repo_root constraints basys3_test_harness.xdc]
 
 # synth
 synth_design -top "FPGATestTop" -part "xc7a35tcpg236-1"
