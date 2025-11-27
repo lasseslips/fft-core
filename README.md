@@ -59,6 +59,14 @@ fft-core/
 
 
 ## Motivation
+The Fast Fourier Transform (FFT) is a fundamental algorithm in digital signal processing, which is widely used in applications such as audio processing, image analysis, telecommunications, and more.
+In many of these applications, real-time processing is crucial to adhere to performance requirements. To achieve the lowest possible latency, the FFT is often implemented directly in hardware,
+such as FPGAs or ASICs. Hardware implementations can exploit parallelism and pipelining to significantly speed up the computation compared to software implementations running on general-purpose processors.
+These speedups can be many folds while still maintaining low power consumption, making hardware FFT implementations ideal for embedded systems and portable devices.
+
+In this project, we implement a hardware accelerator for the FFT in Chisel, which can be accessed through a UART interface.
+The project uses a hardware generator to automatically generate the necessary RTL code for different FFT sizes and configurations.
+This allows for easy integration into existing designs, and makes it possible for the user to tailor the FFT to their specifications.
 
 ## Algorithm Explanation
 The discrete fourier transform is defined by the equation:
