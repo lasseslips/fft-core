@@ -6,7 +6,7 @@ import verifier.FFTTestCase
 import verifier.FFTTestData
 
 class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
-    def testWithFFTSize(fftSize: Int, width: Int, binaryPoint: Int, pipeline: Boolean, testCases: Seq[FFTTestCase]): Unit = {
+    def testWithFFTSize(fftSize: Int, width: Int, binaryPoint: Int, pipeline: PipelineConfig, testCases: Seq[FFTTestCase]): Unit = {
         test(new FPGATestTop(fftSize, width, binaryPoint, pipeline, testCases)) { dut =>
             println(s"Testing FPGATestTop with ${fftSize}-point FFT and ${testCases.length} test cases")
 
@@ -57,7 +57,11 @@ class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
         val fftSize = 16
         val width = 16
         val binaryPoint = 8
-        val pipeline = true
+        val pipeline = PipelineConfig(
+            pipelineComplexMultiplication = true,
+            pipelineButterflyFirstPart = true,
+            pipelineButterflySecondPart = true
+        )
         val testCases = Seq(
             FFTTestData.generateTestCase(fftSize, "impulse", width, binaryPoint),
             FFTTestData.generateTestCase(fftSize, "sinusoid", width, binaryPoint),
@@ -72,7 +76,11 @@ class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
         val fftSize = 8
         val width = 16
         val binaryPoint = 8
-        val pipeline = true
+        val pipeline = PipelineConfig(
+            pipelineComplexMultiplication = true,
+            pipelineButterflyFirstPart = true,
+            pipelineButterflySecondPart = true
+        )
         val testCases = Seq(
             FFTTestData.generateTestCase(fftSize, "impulse", width, binaryPoint),
             FFTTestData.generateTestCase(fftSize, "sinusoid", width, binaryPoint),
@@ -87,7 +95,11 @@ class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
         val fftSize = 4
         val width = 16
         val binaryPoint = 8
-        val pipeline = true
+        val pipeline = PipelineConfig(
+            pipelineComplexMultiplication = true,
+            pipelineButterflyFirstPart = true,
+            pipelineButterflySecondPart = true
+        )
         val testCases = Seq(
             FFTTestData.generateTestCase(fftSize, "impulse", width, binaryPoint),
             FFTTestData.generateTestCase(fftSize, "sinusoid", width, binaryPoint),
@@ -102,7 +114,11 @@ class FPGATestTopSpec extends AnyFlatSpec with ChiselScalatestTester {
         val fftSize = 2
         val width = 16
         val binaryPoint = 8
-        val pipeline = true
+        val pipeline = PipelineConfig(
+            pipelineComplexMultiplication = true,
+            pipelineButterflyFirstPart = true,
+            pipelineButterflySecondPart = true
+        )
         val testCases = Seq(
             FFTTestData.generateTestCase(fftSize, "impulse", width, binaryPoint),
             FFTTestData.generateTestCase(fftSize, "sinusoid", width, binaryPoint),

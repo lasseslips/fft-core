@@ -59,4 +59,11 @@ object ComplexFixedPoint {
         out.imag := (add) >> a.binaryPoint
         out
     }
+
+    def shiftRight(a: Complex, shift: Int): Complex = {
+        val out = Wire(new Complex(a.w, a.binaryPoint))
+        out.real := a.real >> shift
+        out.imag := a.imag >> shift
+        out
+    }
 }

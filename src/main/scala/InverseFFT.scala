@@ -6,7 +6,7 @@ class InverseFFT(
     val fftSize: Int = 8, 
     val width: Int = 16, 
     val binaryPoint: Int = 8, 
-    val pipeline: Boolean = true,
+    val pipeline: PipelineConfig,
     val architecture: String = "GS"
     ) extends Module {
     def isPow2(x: Int): Boolean = (x & (x - 1)) == 0

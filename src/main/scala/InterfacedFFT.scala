@@ -5,7 +5,7 @@ class InterfacedFFT(
     val n : Int,
     val width: Int, 
     val binaryPoint: Int, 
-    val pipeline : Boolean,
+    val pipeline : PipelineConfig,
     val twiddles: Seq[(BigInt, BigInt)],
     val architecture: String = "GS"
     ) extends Module {

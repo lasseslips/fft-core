@@ -11,7 +11,7 @@ class ButterflyNSpec extends AnyFlatSpec with ChiselScalatestTester {
     nums.map { case (re, im) => f"(${re}%.5f,${im}%.5f)" }.mkString(", ")
   }
 
-  def testFFTWithSize(n: Int, width: Int, binaryPoint: Int, numTests: Int = 5, pipeline: Boolean = false, architecture: String = "GS"): Unit = {
+  def testFFTWithSize(n: Int, width: Int, binaryPoint: Int, numTests: Int = 5, pipeline: PipelineConfig, architecture: String = "GS"): Unit = {
     test(new ButterflyN(n, width, binaryPoint, pipeline, architecture)) { dut =>
       println(s"Testing ${n}-point FFT against original ButterflyN and Scala Breeze FFT")
 
@@ -156,67 +156,82 @@ class ButterflyNSpec extends AnyFlatSpec with ChiselScalatestTester {
 
 
   "ButterflyNSpec" should "match Breeze FFT results for 2-point FFT (non-pipelined)" in {
-    testFFTWithSize(2, 16, 8, 5, false)
+    testFFTWithSize(2, 16, 8, 5, PipelineConfig(false, false, false))
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT (non-pipelined)" in {
-    testFFTWithSize(4, 16, 8, 5, false)
+    testFFTWithSize(4, 16, 8, 5, PipelineConfig(false, false, false))
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 8-point FFT (non-pipelined)" in {
-    testFFTWithSize(8, 16, 8, 5, false)
+    testFFTWithSize(8, 16, 8, 5, PipelineConfig(false, false, false))
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 16-point FFT (non-pipelined)" in {
-    testFFTWithSize(16, 32, 16, 3, false)
+    testFFTWithSize(16, 32, 16, 3, PipelineConfig(false, false, false))
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 2-point FFT (pipelined)" in {
-    testFFTWithSize(2, 16, 8, 5, true)
+    testFFTWithSize(2, 16, 8, 5, PipelineConfig(true, true, true))
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT (pipelined)" in {
-    testFFTWithSize(4, 16, 8, 5, true)
+    testFFTWithSize(4, 16, 8, 5, PipelineConfig(true, true, true))
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 8-point FFT (pipelined)" in {
-    testFFTWithSize(8, 16, 8, 5, true)
+    testFFTWithSize(8, 16, 8, 5, PipelineConfig(true, true, true))
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 16-point FFT (pipelined)" in {
-    testFFTWithSize(16, 32, 16, 3, true)
+    testFFTWithSize(16, 32, 16, 3, PipelineConfig(true, true, true))
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 2-point FFT (Cooley-Tukey, non-pipelined)" in {
-    testFFTWithSize(2, 16, 8, 5, false, "CT")
+    testFFTWithSize(2, 16, 8, 5, PipelineConfig(false, false, false), "CT")
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT (Cooley-Tukey, non-pipelined)" in {
-    testFFTWithSize(4, 16, 8, 5, false, "CT")
+    testFFTWithSize(4, 16, 8, 5, PipelineConfig(false, false, false), "CT")
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 8-point FFT (Cooley-Tukey, non-pipelined)" in {
-    testFFTWithSize(8, 16, 8, 5, false, "CT")
+    testFFTWithSize(8, 16, 8, 5, PipelineConfig(false, false, false), "CT")
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 16-point FFT (Cooley-Tukey, non-pipelined)" in {
-    testFFTWithSize(16, 32, 16, 3, false, "CT")
+    testFFTWithSize(16, 32, 16, 3, PipelineConfig(false, false, false), "CT")
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 2-point FFT (Cooley-Tukey, pipelined)" in {
-    testFFTWithSize(2, 16, 8, 5, true, "CT")
+    testFFTWithSize(2, 16, 8, 5, PipelineConfig(true, true, true), "CT")
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT (Cooley-Tukey, pipelined)" in {
-    testFFTWithSize(4, 16, 8, 5, true, "CT")
+    testFFTWithSize(4, 16, 8, 5, PipelineConfig(true, true, true), "CT")
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 8-point FFT (Cooley-Tukey, pipelined)" in {
-    testFFTWithSize(8, 16, 8, 5, true, "CT")
+    testFFTWithSize(8, 16, 8, 5, PipelineConfig(true, true, true), "CT")
   }
 
   "ButterflyNSpec" should "match Breeze FFT results for 16-point FFT (Cooley-Tukey, pipelined)" in {
-    testFFTWithSize(16, 32, 16, 3, true, "CT")
+    testFFTWithSize(16, 32, 16, 3, PipelineConfig(true, true, true), "CT")
   }
 
+  "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT using DIF when runing pipeline config (true, false, true)" in {
+    testFFTWithSize(4, 16, 8, 5, PipelineConfig(true, false, true), "GS")
+  }
+
+  "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT using DIT when runing pipeline config (true, false, true)" in {
+    testFFTWithSize(4, 16, 8, 5, PipelineConfig(true, false, true), "CT")
+  }
+
+  "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT using DIF when runing pipeline config (false, true, false)" in {
+    testFFTWithSize(4, 16, 8, 5, PipelineConfig(false, true, false), "GS")
+  }
+
+  "ButterflyNSpec" should "match Breeze FFT results for 4-point FFT using DIT when runing pipeline config (false, true, false)" in {
+    testFFTWithSize(4, 16, 8, 5, PipelineConfig(false, true, false), "CT")
+  }
 }

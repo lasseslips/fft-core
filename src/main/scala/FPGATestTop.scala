@@ -7,7 +7,7 @@ class FPGATestTop(
     val fftSize: Int = 8, 
     val width: Int = 16, 
     val binaryPoint: Int = 8, 
-    val pipeline: Boolean = true, 
+    val pipeline: PipelineConfig,
     val testCases: Seq[FFTTestCase] = Seq(),
     val architecture: String = "GS"
     ) extends Module {
@@ -64,10 +64,10 @@ class FPGATestTop(
         Module(new ComplexMemory(testCases.size, width, binaryPoint))
     }
     
-    // FFT core instance
+    // FFT core instance 
     val fftCore = Module(new ButterflyN(fftSize, width, binaryPoint, pipeline, architecture))
 
-    // IFFT core instance
+    // IFFT core instance 
     val ifftCore = Module(new InverseFFT(fftSize, width, binaryPoint, pipeline, architecture))
 
     // Assign twiddle factors

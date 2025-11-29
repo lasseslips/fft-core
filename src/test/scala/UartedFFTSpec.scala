@@ -15,7 +15,11 @@ class UartedFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
     val width = 16
     val binaryPoint = 8
     val n = 2
-    val pipeline = true
+    val pipeline = PipelineConfig(
+      pipelineComplexMultiplication = false,
+      pipelineButterflyFirstPart = false,
+      pipelineButterflySecondPart = false
+    )
     val architecture = "GS"
 
     test(new UartedFFT(baudRate, clockFreq, width, binaryPoint, n, pipeline, architecture)) { dut =>

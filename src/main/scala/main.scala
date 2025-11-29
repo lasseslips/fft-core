@@ -6,7 +6,11 @@ object Main extends App {
   val fftSize = 16
   val width = 16
   val binaryPoint = 8
-  val pipeline = true
+  val pipeline = PipelineConfig(
+      pipelineComplexMultiplication = false,
+      pipelineButterflyFirstPart = true,
+      pipelineButterflySecondPart = true
+  )
   val architecture = "GS"
 
   val baudRate = 115200

@@ -8,8 +8,12 @@ import verifier.ScalaFFTVerifier
 
 class Butterfly8Spec extends AnyFlatSpec with ChiselScalatestTester {
 
-  def testButterfly8(dut : Butterfly8, width: Int, binaryPoint: Int, pipeline: Boolean, architecture: String): Unit = {
+  def testButterfly8(dut : Butterfly8, width: Int, binaryPoint: Int, pipeline: PipelineConfig, architecture: String): Unit = {
     println("Testing Butterfly8 against Scala Breeze 8-point FFT")
+    if (pipeline.pipelineComplexMultiplication || pipeline.pipelineButterflyFirstPart || pipeline.pipelineButterflySecondPart) {
+      assert(false, "Pipeline stages are not supported in this test. Please set all pipeline options to false.")
+    }
+
     if (ScalaFFTVerifier.isBreezeAvailable) {
       println("Breeze detected - running FFT tests")
 
@@ -93,14 +97,14 @@ class Butterfly8Spec extends AnyFlatSpec with ChiselScalatestTester {
 
 
   "Butterfly8" should "match Scala Breeze FFT results for 8-point FFT DIF" in {
-    test(new Butterfly8(16, 8, false, "GS")) { dut =>
-      testButterfly8(dut, 16, 8, false, "GS")
+    test(new Butterfly8(16, 8, PipelineConfig(false, false, false), "GS")) { dut =>
+      testButterfly8(dut, 16, 8, PipelineConfig(false, false, false), "GS")
     }
   }
 
   "Butterfly8" should "match Scala Breeze FFT results for 8-point FFT DIT" in {
-    test(new Butterfly8(16, 8, false, "CT")) { dut =>
-      testButterfly8(dut, 16, 8, false, "CT")
+    test(new Butterfly8(16, 8, PipelineConfig(false, false, false), "CT")) { dut =>
+      testButterfly8(dut, 16, 8, PipelineConfig(false, false, false), "CT")
     }
   }
 }

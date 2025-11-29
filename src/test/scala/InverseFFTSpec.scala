@@ -10,7 +10,7 @@ class InverseFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
     nums.map { case (re, im) => f"(${re}%.5f,${im}%.5f)" }.mkString(", ")
   }
 
-  def testIFFTWithSize(n: Int, width: Int, binaryPoint: Int, numTests: Int = 5, pipeline: Boolean = false): Unit = {
+  def testIFFTWithSize(n: Int, width: Int, binaryPoint: Int, numTests: Int = 5, pipeline: PipelineConfig = PipelineConfig(false, false, false)): Unit = {
     test(new InverseFFT(n, width, binaryPoint, pipeline)) { dut =>
       println(s"Testing ${n}-point IFFT against InverseFFT wrapper and Scala Breeze IFFT")
 
@@ -155,35 +155,35 @@ class InverseFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
 
 
   "InverseFFTSpec" should "match Breeze IFFT results for 2-point IFFT (non-pipelined)" in {
-    testIFFTWithSize(2, 16, 8, 5, false)
+    testIFFTWithSize(2, 16, 8, 5, PipelineConfig(false, false, false))
   }
 
   "InverseFFTSpec" should "match Breeze IFFT results for 4-point IFFT (non-pipelined)" in {
-    testIFFTWithSize(4, 16, 8, 5, false)
+    testIFFTWithSize(4, 16, 8, 5, PipelineConfig(false, false, false))
   }
 
   "InverseFFTSpec" should "match Breeze IFFT results for 8-point IFFT (non-pipelined)" in {
-    testIFFTWithSize(8, 16, 8, 5, false)
+    testIFFTWithSize(8, 16, 8, 5, PipelineConfig(false, false, false))
   }
 
   "InverseFFTSpec" should "match Breeze IFFT results for 16-point IFFT (non-pipelined)" in {
-    testIFFTWithSize(16, 32, 16, 3, false)
+    testIFFTWithSize(16, 32, 16, 3, PipelineConfig(false, false, false))
   }
 
   "InverseFFTSpec" should "match Breeze IFFT results for 2-point IFFT (pipelined)" in {
-    testIFFTWithSize(2, 16, 8, 5, true)
+    testIFFTWithSize(2, 16, 8, 5, PipelineConfig(true, true, true))
   }
 
   "InverseFFTSpec" should "match Breeze IFFT results for 4-point IFFT (pipelined)" in {
-    testIFFTWithSize(4, 16, 8, 5, true)
+    testIFFTWithSize(4, 16, 8, 5, PipelineConfig(true, true, true))
   }
 
   "InverseFFTSpec" should "match Breeze IFFT results for 8-point IFFT (pipelined)" in {
-    testIFFTWithSize(8, 16, 8, 5, true)
+    testIFFTWithSize(8, 16, 8, 5, PipelineConfig(true, true, true))
   }
 
   "InverseFFTSpec" should "match Breeze IFFT results for 16-point IFFT (pipelined)" in {
-    testIFFTWithSize(16, 32, 16, 3, true)
+    testIFFTWithSize(16, 32, 16, 3, PipelineConfig(true, true, true))
   }
 
 }

@@ -4,6 +4,8 @@ import scala.sys.process._
 import java.io.{File, PrintWriter}
 import scala.io.Source
 
+// Retired Verifier using Python NumPy for FFT verification
+
 object PythonFFTVerifier {
   
   // Verify N-point FFT with Python NumPy

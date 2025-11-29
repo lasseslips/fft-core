@@ -7,7 +7,7 @@ class ComparatorSpec extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "Comparator"
 
   it should "detect equality correctly without pipeline" in {
-    test(new Comparator(width = 16, binaryPoint = 8, tolerance = 1, pipeline = false)) { dut =>
+    test(new Comparator(width = 16, binaryPoint = 8, tolerance = 1, pipeline = PipelineConfig(false, false, false))) { dut =>
       def toSFix(value: Double): SInt = {
         (value * (1 << dut.binaryPoint)).toInt.S
       }
@@ -36,7 +36,7 @@ class ComparatorSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "detect equality correctly with pipeline enabled" in {
-    test(new Comparator(width = 16, binaryPoint = 8, tolerance = 2, pipeline = true)) { dut =>
+    test(new Comparator(width = 16, binaryPoint = 8, tolerance = 2, pipeline = PipelineConfig(true, true, true))) { dut =>
       def toSFix(value: Double): SInt = {
         (value * (1 << dut.binaryPoint)).toInt.S
       }

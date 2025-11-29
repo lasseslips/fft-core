@@ -81,7 +81,7 @@ class BufferedFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
     val width = 16
     val binaryPoint = 8
     val n = 4
-    val pipeline = true
+    val pipeline = PipelineConfig(true, true, true)
 
     test(new BufferedFFT(n, width, binaryPoint, pipeline)) { dut =>
       // Prepare a simple input vector of complex numbers to send
@@ -98,7 +98,7 @@ class BufferedFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
     val width = 16
     val binaryPoint = 8
     val n = 4
-    val pipeline = false
+    val pipeline = PipelineConfig(false, false, false)
 
     test(new BufferedFFT(n, width, binaryPoint, pipeline)) { dut =>
       // Prepare a simple input vector of complex numbers to send
@@ -117,7 +117,7 @@ class BufferedFFTSpec extends AnyFlatSpec with ChiselScalatestTester {
     val binaryPoint = 8
     //val n = Math.pow(2, rand.nextInt(4) + 2).toInt // n = 4, 8, 16, or 32
     val n = 8
-    val pipeline = true
+    val pipeline = PipelineConfig(true, true, true)
 
     test(new BufferedFFT(n, width, binaryPoint, pipeline)) { dut =>
       for (i <- 0 until 100) {

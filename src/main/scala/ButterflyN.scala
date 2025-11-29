@@ -3,7 +3,7 @@ import chisel3.util._
 import scala.math._
 import utils.FixedPointUtils
 
-class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int, val pipeline: Boolean = false, val architecture: String = "GS") extends Module {
+class ButterflyN(val n: Int, val width: Int, val binaryPoint: Int, val pipeline: PipelineConfig, val architecture: String = "GS") extends Module {
     def isPow2(x: Int): Boolean = (x & (x - 1)) == 0
     require(n >= 2 && isPow2(n), "N must be a power of 2 and >= 2")
     
@@ -139,14 +139,19 @@ object ButterflyNUtils {
         }
     }
 
-    // Remember to update this if pipeline stages in Butterfly change
-    // TODO: as for pipelining. We currently have 2 cycles per stage (1 for sum/diff, 1 for mul)
-    // Maybe we can adjust to 1 cycle in stages where twiddle is 1 (no mul needed)
-    // Also look into pipelining inside multiplication (there are currently mapped 2 consecutive DSPs)
-    // Currently we get around 150 MHz on Basys3 inside the Butterfly (with N=8, 16-bit width, 8-bit binary point)
-    // The test harness surrounding the FFT is not pipelined optimally in the comparison so the overall freq is lower (around 104 MHz)
-    def getLatency(n: Int, pipeline: Boolean): Int = {
-        if (!pipeline) 0
-        else 2*(log(n) / log(2)).toInt
+    def getLatency(n: Int, pipeline: PipelineConfig): Int = {
+        val stageLatency = {
+            var latency = 0
+            if (pipeline.pipelineComplexMultiplication) latency += 1
+            if (pipeline.pipelineButterflyFirstPart) latency += 1
+            if (pipeline.pipelineButterflySecondPart) latency += 1
+            latency
+        }
+        if (n == 2) {
+            stageLatency
+        } else {
+            val recursiveLatency = getLatency(n / 2, pipeline)
+            stageLatency + recursiveLatency
+        }
     }
 }

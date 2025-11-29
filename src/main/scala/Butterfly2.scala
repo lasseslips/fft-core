@@ -1,7 +1,7 @@
 import chisel3._
 import chisel3.util._
 
-class Butterfly2(val width: Int, val binaryPoint: Int, val pipeline: Boolean = false, architecture: String = "GS") extends Module {
+class Butterfly2(val width: Int, val binaryPoint: Int, val pipeline: PipelineConfig, architecture: String = "GS") extends Module {
     val io = IO(new Bundle {
         // Input complex numbers
         val in0 = Input(new ComplexFixedPoint.Complex(width, binaryPoint))

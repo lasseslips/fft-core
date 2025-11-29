@@ -1,7 +1,7 @@
 import chisel3._
 import chisel3.util._
 
-class Comparator(val width: Int, val binaryPoint: Int, val tolerance: Int, val pipeline: Boolean = false) extends Module {
+class Comparator(val width: Int, val binaryPoint: Int, val tolerance: Int, val pipeline: PipelineConfig) extends Module {
     val io = IO(new Bundle {
         // Input complex numbers
         val in0 = Input(new ComplexFixedPoint.Complex(width, binaryPoint))
@@ -10,11 +10,12 @@ class Comparator(val width: Int, val binaryPoint: Int, val tolerance: Int, val p
         // Output indicating equality
         val equal = Output(Bool())
     })
+    val pipelineBool = pipeline.pipelineComplexMultiplication || pipeline.pipelineButterflyFirstPart || pipeline.pipelineButterflySecondPart
 
     val diff = Wire(new ComplexFixedPoint.Complex(width, binaryPoint))
     val absDiff = Wire(new ComplexFixedPoint.Complex(width, binaryPoint))
     // Compute differences
-    if (pipeline) {
+    if (pipelineBool) {
         diff.real := RegNext(io.in0.real - io.in1.real)
         diff.imag := RegNext(io.in0.imag - io.in1.imag)
     } else {
@@ -26,7 +27,7 @@ class Comparator(val width: Int, val binaryPoint: Int, val tolerance: Int, val p
     absDiff.real := Mux(diff.real < 0.S, -diff.real, diff.real)
     absDiff.imag := Mux(diff.imag < 0.S, -diff.imag, diff.imag)
     
-    if (pipeline) {
+    if (pipelineBool) {
         io.equal := RegNext((absDiff.real <= tolerance.S) && (absDiff.imag <= tolerance.S))
     } else {
         io.equal := (absDiff.real <= tolerance.S) && (absDiff.imag <= tolerance.S)
@@ -35,8 +36,8 @@ class Comparator(val width: Int, val binaryPoint: Int, val tolerance: Int, val p
 
 object ComparatorUtils {
     // Calculate the latency for the comparator
-    def getLatency(pipeline: Boolean): Int = {
-        if (!pipeline) 0
+    def getLatency(pipeline: PipelineConfig): Int = {
+        if (!(pipeline.pipelineComplexMultiplication || pipeline.pipelineButterflyFirstPart || pipeline.pipelineButterflySecondPart)) 0
         else 2 // one for calculation and one in output register
     }
 }

@@ -5,7 +5,7 @@ class BufferedFFT(
         val n : Int,
         val width: Int, 
         val binaryPoint: Int, 
-        val pipeline : Boolean,
+        val pipeline : PipelineConfig,
         val architecture: String = "GS"
     ) extends Module {
 

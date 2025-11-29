@@ -1,7 +1,7 @@
 import chisel3._
 import chisel3.util._
 
-class Butterfly8(val width: Int, val binaryPoint: Int, val pipeline: Boolean = false, architecture: String = "GS") extends Module {
+class Butterfly8(val width: Int, val binaryPoint: Int, val pipeline: PipelineConfig, architecture: String = "GS") extends Module {
     val io = IO(new Bundle {
         // Input complex numbers
         val in = Input(Vec(8, new ComplexFixedPoint.Complex(width, binaryPoint)))
@@ -13,10 +13,10 @@ class Butterfly8(val width: Int, val binaryPoint: Int, val pipeline: Boolean = f
         // First stage: 4 butterflies with twiddle factors W_8^0, W_8^1, W_8^2, W_8^3
         val sqrt2_over_2 = (0.7071 * (1 << binaryPoint)).toInt
 
-        val butterfly10 = Module(new Butterfly(width, binaryPoint, pipeline))
-        val butterfly11 = Module(new Butterfly(width, binaryPoint, pipeline))
-        val butterfly12 = Module(new Butterfly(width, binaryPoint, pipeline))
-        val butterfly13 = Module(new Butterfly(width, binaryPoint, pipeline))
+        val butterfly10 = Module(new Butterfly(width, binaryPoint, pipeline, architecture))
+        val butterfly11 = Module(new Butterfly(width, binaryPoint, pipeline, architecture))
+        val butterfly12 = Module(new Butterfly(width, binaryPoint, pipeline, architecture))
+        val butterfly13 = Module(new Butterfly(width, binaryPoint, pipeline, architecture))
 
         butterfly10.io.in0 := io.in(0)
         butterfly10.io.in1 := io.in(4)
@@ -39,8 +39,8 @@ class Butterfly8(val width: Int, val binaryPoint: Int, val pipeline: Boolean = f
         butterfly13.io.twiddle.imag := (-sqrt2_over_2).S
 
         // Second stage: two 4-point FFTs
-        val butterfly00 = Module(new Butterfly4(width, binaryPoint, pipeline))
-        val butterfly01 = Module(new Butterfly4(width, binaryPoint, pipeline))
+        val butterfly00 = Module(new Butterfly4(width, binaryPoint, pipeline, architecture))
+        val butterfly01 = Module(new Butterfly4(width, binaryPoint, pipeline, architecture))
 
         // Connect the first 4-point FFT (even outputs)
         butterfly00.io.in(0) := butterfly10.io.out0
