@@ -3,7 +3,9 @@
     "fftSize": 8,
     "width": 16,
     "binaryPoint": 8,
-    "pipeline": true,
+    "pipelineComplexMultiplication": true,
+    "pipelineButterflyFirstPart": true,
+    "pipelineButterflySecondPart": true,
     "architecture": "GS"
   },
   "parameter_sweep": {

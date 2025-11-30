@@ -16,7 +16,9 @@ object CollectParametricMetrics {
     fftSize: String,
     width: String,
     binaryPoint: String,
-    pipeline: String,
+    pipelineComplexMultiplication: Option[Boolean],
+    pipelineButterflyFirstPart: Option[Boolean],
+    pipelineButterflySecondPart: Option[Boolean],
     architecture: String,
     wns: Option[Double],
     maxFreq: Option[Double],
@@ -120,15 +122,125 @@ object CollectParametricMetrics {
     }
   }
 
+  // JSON helper moved to object scope so interactive mode can reuse it
+  def ujsonToAny(v: ujson.Value): Any = v match {
+    case ujson.Num(n) if n.isValidInt => n.toInt
+    case ujson.Num(n) => n.toDouble
+    case ujson.Str(s) => s
+    case ujson.Bool(b) => b
+    case ujson.Arr(arr) => arr.toList.map(ujsonToAny)
+    case ujson.Obj(obj) => obj.map { case (k, vv) => k -> ujsonToAny(vv) }.toMap
+    case ujson.Null => null
+  }
+
+  def readConfigFromFile(p: Path): Option[Map[String, Any]] = {
+    try {
+      if (!Files.exists(p)) return None
+      val raw = new String(Files.readAllBytes(p), StandardCharsets.UTF_8)
+      val parsed = ujson.read(raw)
+      Some(ujsonToAny(parsed).asInstanceOf[Map[String, Any]])
+    } catch {
+      case e: Exception => System.err.println(s"Warning: Failed to read config $p: ${e.getMessage}"); None
+    }
+  }
+
+  def listSweepFiles(): Seq[Path] = {
+    val sweepDir = Paths.get("sweeps")
+    if (!Files.exists(sweepDir) || !Files.isDirectory(sweepDir)) return Seq.empty
+    import scala.jdk.CollectionConverters._
+    Files.list(sweepDir).iterator().asScala.toSeq.filter(p => p.toString.endsWith(".json"))
+  }
+
+  // Interactive console runner
+  def runInteractive(): Unit = {
+    val stdin = scala.io.StdIn
+    println("Interactive parametric runner")
+    println("Select design to synthesize:")
+    println("  1) FPGATestTop (FFT)")
+    println("  2) UartedFFT (UARTed FFT)")
+    val designChoice = stdin.readLine("Enter choice [1]: ").trim match { case "2" => 2; case _ => 1 }
+
+    val defaultTcl = if (designChoice == 2) Paths.get("src/main/tcl/build_uart.tcl") else Paths.get("src/main/tcl/build.tcl")
+    val tclInput = stdin.readLine(s"TCL script to use [${defaultTcl.toString}]: ").trim
+    val tclPath = if (tclInput.isEmpty) defaultTcl else Paths.get(tclInput)
+    if (!Files.exists(tclPath)) { println(s"TCL not found: $tclPath"); return }
+
+    println("Choose parameter source:")
+    println("  0) Use default config")
+    val sweepFiles = listSweepFiles()
+    if (sweepFiles.nonEmpty) {
+      println("  1..n) Use sweep file from sweeps/ directory:")
+      for ((p, i) <- sweepFiles.zipWithIndex) println(s"    ${i+1}) ${p.getFileName}")
+    }
+    println("  c) Provide custom config JSON path")
+    val srcChoice = stdin.readLine("Enter choice [0]: ").trim
+
+    val configOpt: Option[Map[String, Any]] = srcChoice match {
+      case s if s == "" || s == "0" => Some(loadDefaultConfig())
+      case s if s == "c" || s == "C" =>
+        val p = stdin.readLine("Config file path: ").trim
+        if (p.isEmpty) Some(loadDefaultConfig()) else readConfigFromFile(Paths.get(p))
+      case s =>
+        try {
+          val idx = s.toInt - 1
+          if (idx >= 0 && idx < sweepFiles.length) readConfigFromFile(sweepFiles(idx)) else Some(loadDefaultConfig())
+        } catch { case _: Exception => Some(loadDefaultConfig()) }
+    }
+
+    val config = configOpt.getOrElse(loadDefaultConfig())
+    println(s"Using configuration: $config")
+
+    val parameterSets = generateParameterSets(config)
+    println(s"Parameter sets: ${parameterSets.length}")
+
+    val defaultOut = if (designChoice == 2) "uarted_parametric_results.csv" else "parametric_results.csv"
+    val outInput = stdin.readLine(s"Output CSV [${defaultOut}]: ").trim
+    val outPath = Paths.get(if (outInput.isEmpty) defaultOut else outInput)
+
+    val designStr = if (designChoice == 2) "UartedFFT" else "FPGATestTop"
+    // Run a unified sweep for the chosen design
+    runSweep(None, tclPath, parameterSets, outPath, designStr)
+  }
+
+  // Helper to extract boolean-like values from parameter maps
+  private def getBoolOpt(m: Map[String, Any], k: String): Option[Boolean] = m.get(k) match {
+    case Some(b: Boolean) => Some(b)
+    case Some(s: String) => Some(s.toLowerCase == "true")
+    case Some(i: Int) => Some(i != 0)
+    case Some(d: Double) => Some(d != 0.0)
+    case _ => None
+  }
+
+  // Helper to extract integer-like values from parameter maps
+  private def toIntOpt(v: Any): Option[Int] = v match {
+    case i: Int => Some(i)
+    case d: Double => Some(d.toInt)
+    case s: String =>
+      try Some(s.trim.toInt) catch { case _: Exception => None }
+    case _ => None
+  }
+
   def generateParameterSets(config: Map[String, Any]): Seq[Map[String, Any]] = {
-    val base = config.getOrElse("base_parameters", Map("fftSize" -> 8, "width" -> 16, "binaryPoint" -> 8, "pipeline" -> true)).asInstanceOf[Map[String, Any]]
+    val base = config.getOrElse("base_parameters", Map("fftSize" -> 8, "width" -> 16, "binaryPoint" -> 8, "pipelineComplexMultiplication" -> false, "pipelineButterflyFirstPart" -> true, "pipelineButterflySecondPart" -> true)).asInstanceOf[Map[String, Any]]
     config.get("parameter_sweep") match {
       case Some(s: Map[String, Any] @unchecked) =>
         s.get("type") match {
           case Some("fft_size") => s.get("values").map { v => v.asInstanceOf[List[Any]].map(x => base + ("fftSize" -> x)) }.getOrElse(Seq(base))
           case Some("data_width") => s.get("values").map { v => v.asInstanceOf[List[Any]].map(x => base + ("width" -> x)) }.getOrElse(Seq(base))
           case Some("architecture") => s.get("values").map { v => v.asInstanceOf[List[Any]].map(x => base + ("architecture" -> x)) }.getOrElse(Seq(base))
-          case Some("pipeline") => s.get("values").map { v => v.asInstanceOf[List[Any]].map(x => base + ("pipeline" -> x)) }.getOrElse(Seq(base))
+          case Some("pipeline") =>
+            // If the sweep provides explicit maps, honor them; otherwise generate all combinations toggling the three stages.
+            val valsOpt = s.get("values").map(_.asInstanceOf[List[Any]]).getOrElse(Nil)
+            val explicit = valsOpt.collect { case m: Map[_, _] =>
+              val mm = m.asInstanceOf[Map[String, Any]]
+              base + ("pipelineComplexMultiplication" -> mm.getOrElse("pipelineComplexMultiplication", base("pipelineComplexMultiplication"))) + ("pipelineButterflyFirstPart" -> mm.getOrElse("pipelineButterflyFirstPart", base("pipelineButterflyFirstPart"))) + ("pipelineButterflySecondPart" -> mm.getOrElse("pipelineButterflySecondPart", base("pipelineButterflySecondPart")))
+            }
+            val combos = for {
+              pcm <- Seq(false, true)
+              pbf <- Seq(false, true)
+              pbs <- Seq(false, true)
+            } yield base + ("pipelineComplexMultiplication" -> pcm) + ("pipelineButterflyFirstPart" -> pbf) + ("pipelineButterflySecondPart" -> pbs)
+            (explicit ++ combos).distinct
           case Some("multiple") =>
             val params = s.getOrElse("parameters", Map.empty).asInstanceOf[Map[String, List[Any]]]
             val keys = params.keys.toList
@@ -143,13 +255,34 @@ object CollectParametricMetrics {
     }
   }
 
-  def createScalaMain(params: Map[String, Any], outputPath: Path): Path = {
+  def createScalaMain(params: Map[String, Any], outputPath: Path, design: String = "FPGATestTop", baudRate: Int = 115200, clockFreq: Int = 100000000): Path = {
     val fftSize = params.getOrElse("fftSize", 8)
     val width = params.getOrElse("width", 16)
     val binaryPoint = params.getOrElse("binaryPoint", 8)
-    val pipeline = params.getOrElse("pipeline", true)
+    val pcm = params.getOrElse("pipelineComplexMultiplication", false)
+    val pbf = params.getOrElse("pipelineButterflyFirstPart", true)
+    val pbs = params.getOrElse("pipelineButterflySecondPart", true)
+    val pipeline = s"PipelineConfig(pipelineComplexMultiplication = ${pcm}, pipelineButterflyFirstPart = ${pbf}, pipelineButterflySecondPart = ${pbs})"
     val architecture = params.getOrElse("architecture", "GS").toString
-    val content = s"""
+    val content: String = if (design == "UartedFFT") {
+      s"""
+import chisel3._
+
+object Main extends App {
+  println("Auto-generated Main: emitting UartedFFT")
+  val baudRate = $baudRate
+  val clockFreq = $clockFreq
+  val fftSize = $fftSize
+  val width = $width
+  val binaryPoint = $binaryPoint
+  val pipeline = $pipeline
+  val architecture = "$architecture"
+
+  emitVerilog(new UartedFFT(baudRate, clockFreq, width, binaryPoint, fftSize, pipeline, architecture), Array("--target-dir", "verilog"))
+}
+"""
+    } else {
+      s"""
 import chisel3._
 import verifier.FFTTestData
 /**
@@ -160,7 +293,7 @@ object Main extends App {
   val fftSize = $fftSize
   val width = $width
   val binaryPoint = $binaryPoint
-  val pipeline = ${pipeline.toString.toLowerCase}
+    val pipeline = $pipeline
   val architecture = "$architecture"
   val testCases = Seq(
       FFTTestData.generateTestCase(fftSize, "impulse", width, binaryPoint),
@@ -172,24 +305,25 @@ object Main extends App {
   emitVerilog(new FPGATestTop(fftSize, width, binaryPoint, pipeline, testCases), Array("--target-dir", "verilog"))
 }
 """
+    }
     Files.write(outputPath, content.getBytes(StandardCharsets.UTF_8))
     outputPath
   }
 
-  def compileChiselDesign(params: Map[String, Any], runNumber: Int): (Boolean, Option[Double]) = {
-    println(s"  Compiling Chisel design with parameters: $params")
+  def compileChiselDesign(params: Map[String, Any], runNumber: Int, design: String = "FPGATestTop", baudRate: Int = 115200, clockFreq: Int = 100000000): (Boolean, Option[Double]) = {
+    println(s"  Compiling Chisel design ($design) with parameters: $params")
     val projectRoot = Paths.get(System.getProperty("user.dir")).toAbsolutePath
     val originalMain = projectRoot.resolve("src/main/scala/Main.scala")
     val backupMain = projectRoot.resolve("src/main/scala/Main.scala.backup")
     try {
       if (Files.exists(originalMain)) Files.copy(originalMain, backupMain, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
       val tmpMain = projectRoot.resolve("src/main/scala/Main.scala.tmp")
-      createScalaMain(params, tmpMain)
+      createScalaMain(params, tmpMain, if (design == "UartedFFT") "UartedFFT" else "FPGATestTop", baudRate, clockFreq)
       Files.move(tmpMain, originalMain, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        // Build a bash -c command that uses wslpath to convert the Windows path to WSL path.
-        val windowsPathEscaped = projectRoot.toAbsolutePath.toString.replace("\\", "\\\\")
-        val bashCmd = "cd $(wslpath -u '" + windowsPathEscaped + "') && sbt 'runMain Main'"
-        val wslCmd = Seq("wsl", "bash", "-c", bashCmd)
+      // Build a bash -c command that uses wslpath to convert the Windows path to WSL path.
+      val windowsPathEscaped = projectRoot.toAbsolutePath.toString.replace("\\", "\\\\")
+      val bashCmd = "cd $(wslpath -u '" + windowsPathEscaped + "') && sbt 'runMain Main'"
+      val wslCmd = Seq("wsl", "bash", "-c", bashCmd)
       val start = System.nanoTime()
       val pb = new java.lang.ProcessBuilder(wslCmd.asJava)
       pb.redirectErrorStream(true)
@@ -214,11 +348,13 @@ object Main extends App {
     }
   }
 
-  def runParametricBuild(version: Option[String], tclFile: Path, params: Map[String, Any], runNumber: Int): Option[Metrics] = {
-    println(s"Starting parametric run $runNumber...")
+
+
+  def runParametricBuild(version: Option[String], tclFile: Path, params: Map[String, Any], runNumber: Int, design: String = "FPGATestTop", baudRate: Int = 115200, clockFreq: Int = 100000000): Option[Metrics] = {
+    println(s"Starting parametric run $runNumber for design $design...")
     println(s"  Parameters: $params")
     cleanupOldResults()
-    val (chiselOk, compileTimeOpt) = compileChiselDesign(params, runNumber)
+    val (chiselOk, compileTimeOpt) = compileChiselDesign(params, runNumber, design, baudRate, clockFreq)
     if (!chiselOk) { println(s"  Run $runNumber failed during Chisel compilation"); return None }
     println("  Running Vivado synthesis (Scala wrapper)...")
     val start = System.nanoTime()
@@ -248,7 +384,9 @@ object Main extends App {
       params.getOrElse("fftSize", "N/A").toString,
       params.getOrElse("width", "N/A").toString,
       params.getOrElse("binaryPoint", "N/A").toString,
-      params.getOrElse("pipeline", "N/A").toString,
+      getBoolOpt(params, "pipelineComplexMultiplication"),
+      getBoolOpt(params, "pipelineButterflyFirstPart"),
+      getBoolOpt(params, "pipelineButterflySecondPart"),
       params.getOrElse("architecture", "N/A").toString,
       wns, maxFreq, fftWns, fftMaxFreq,
       luts, lutPct, ffs, ffPct, dsps, dspPct,
@@ -259,117 +397,63 @@ object Main extends App {
     Some(metrics)
   }
 
-  def loadDefaultConfig(): Map[String, Any] = Map(
-    "base_parameters" -> Map("fftSize" -> 8, "width" -> 16, "binaryPoint" -> 8, "pipeline" -> true, "architecture" -> "GS"),
-    "parameter_sweep" -> Map("type" -> "fft_size", "values" -> List(4, 8, 16))
-  )
-
-  def writeCsv(path: Path, results: Seq[Metrics]): Unit = {
-    val header = Seq(
-      "run", "fft_size", "data_width", "binary_point", "pipeline",
-      "architecture",
-      "wns_ns", "max_frequency_mhz", "fft_wns_ns", "fft_max_frequency_mhz",
-      "luts_used", "lut_percentage", "ffs_used", "ffs_percentage",
-      "dsps_used", "dsp_percentage",
-      "fft_luts_used", "fft_lut_percentage", "fft_ffs_used", "fft_ffs_percentage",
-      "fft_dsps_used", "fft_dsp_percentage",
-      "ifft_luts_used", "ifft_lut_percentage", "ifft_ffs_used", "ifft_ffs_percentage",
-      "ifft_dsps_used", "ifft_dsp_percentage",
-      "compile_time_s", "synthesis_time_s", "total_time_s", "success"
-    )
-    val pw = new PrintWriter(Files.newBufferedWriter(path, StandardCharsets.UTF_8))
-    try {
-      pw.println(header.mkString(","))
-      results.foreach { r =>
-        val row = Seq(
-          r.run.toString, r.fftSize, r.width, r.binaryPoint, r.pipeline,
-          r.architecture,
-          r.wns.map(_.toString).getOrElse(""), r.maxFreq.map(_.toString).getOrElse(""), r.fftWns.map(_.toString).getOrElse(""), r.fftMaxFreq.map(_.toString).getOrElse(""),
-          r.luts.map(_.toString).getOrElse(""), r.lutPct.map(_.toString).getOrElse(""), r.ffs.map(_.toString).getOrElse(""), r.ffPct.map(_.toString).getOrElse(""),
-          r.dsps.map(_.toString).getOrElse(""), r.dspPct.map(_.toString).getOrElse(""),
-          r.fftLuts.map(_.toString).getOrElse(""), r.fftLutPct.map(_.toString).getOrElse(""), r.fftFfs.map(_.toString).getOrElse(""), r.fftFfPct.map(_.toString).getOrElse(""),
-          r.fftDsps.map(_.toString).getOrElse(""), r.fftDspPct.map(_.toString).getOrElse(""),
-          r.compileTime.map(_.toString).getOrElse(""), r.synthTime.map(_.toString).getOrElse(""), r.totalTime.map(_.toString).getOrElse(""), r.success.toString
-        )
-        pw.println(row.mkString(","))
-      }
-    } finally pw.close()
-  }
-
-  def main(args: Array[String]): Unit = {
-    var configFile: Option[String] = None
-    var version: Option[String] = None
-    var tcl: Option[String] = None
-    var output = "parametric_results.csv"
-    var runs: Option[Int] = None
-    var i = 0
-    while (i < args.length) {
-      args(i) match {
-        case "--config" | "-c" => configFile = Some(args(i + 1)); i += 2
-        case "--version" | "-v" => version = Some(args(i + 1)); i += 2
-        case "--tcl" => tcl = Some(args(i + 1)); i += 2
-        case "--output" | "-o" => output = args(i + 1); i += 2
-        case "--vivado-script" => println("Warning: --vivado-script ignored; using Scala RunVivadoScript wrapper"); i += 2
-        case "--runs" | "-r" => runs = Some(args(i + 1).toInt); i += 2
-        case other => println(s"Unknown arg: $other"); i += 1
-      }
-    }
-
-    def ujsonToAny(v: ujson.Value): Any = v match {
-      case ujson.Num(n) if n.isValidInt => n.toInt
-      case ujson.Num(n) => n.toDouble
-      case ujson.Str(s) => s
-      case ujson.Bool(b) => b
-      case ujson.Arr(arr) => arr.toList.map(ujsonToAny)
-      case ujson.Obj(obj) => obj.map { case (k, vv) => k -> ujsonToAny(vv) }.toMap
-      case ujson.Null => null
-    }
-
-    val config: Map[String, Any] = configFile.flatMap { cf =>
-      val p = Paths.get(cf)
-      if (Files.exists(p)) {
-        val raw = new String(Files.readAllBytes(p), StandardCharsets.UTF_8)
-        try {
-          val parsed = ujson.read(raw)
-          Some(ujsonToAny(parsed).asInstanceOf[Map[String, Any]])
-        } catch {
-          case e: Exception =>
-          System.err.println(s"Warning: Failed to parse config file $p: ${e.getMessage}. Using default config.")
-          None
-        }
-      } else {
-        System.err.println(s"Warning: Config file not found: $p. Using default config.")
-        None
-      }
-    }.getOrElse(loadDefaultConfig())
-
-    println(s"Using configuration: $config")
-
-    val parameterSets = runs.map(r => Seq.fill(r)(config("base_parameters").asInstanceOf[Map[String, Any]])).getOrElse(generateParameterSets(config))
-
-    val tclPath = tcl.map(Paths.get(_)).getOrElse(Paths.get("src/main/tcl/build.tcl"))
-    if (!Files.exists(tclPath)) { System.err.println(s"Error: TCL file not found: $tclPath"); sys.exit(1) }
-
-    println(s"Starting ${parameterSets.length} parametric runs...")
-    println(s"Vivado script: (using Scala RunVivadoScript wrapper)")
-    println(s"TCL file: $tclPath")
-    println(s"Output file: $output")
-
+  def runSweep(version: Option[String], tclFile: Path, parameterSets: Seq[Map[String, Any]], output: Path, design: String = "FPGATestTop", baudRate: Int = 115200, clockFreq: Int = 100000000): Unit = {
+    println(s"Starting $design sweep with ${parameterSets.length} parameter sets")
     val results = scala.collection.mutable.ArrayBuffer[Metrics]()
     var successful = 0
-    for ((paramsAny, idx) <- parameterSets.zipWithIndex) {
-      val params = paramsAny.asInstanceOf[Map[String, Any]]
+    for ((params, idx) <- parameterSets.zipWithIndex) {
       val runNum = idx + 1
-      val res = runParametricBuild(version, tclPath, params, runNum)
-      res match {
-        case Some(m) => results += m; successful += 1
-        case None =>
-          results += Metrics(
+      // Check width vs binaryPoint: skip running configs where width <= binaryPoint
+      val widthVal = params.getOrElse("width", "")
+      val binptVal = params.getOrElse("binaryPoint", "")
+      val widthOpt = toIntOpt(widthVal)
+      val binptOpt = toIntOpt(binptVal)
+      if (widthOpt.isDefined && binptOpt.isDefined && widthOpt.get <= binptOpt.get) {
+        println(s"  Skipping run $runNum: width (${widthOpt.get}) <= binaryPoint (${binptOpt.get})")
+        // Record a skipped metrics entry (unsuccessful)
+        results += Metrics(
+          run = runNum,
+          fftSize = params.getOrElse("fftSize", "N/A").toString,
+          width = params.getOrElse("width", "N/A").toString,
+          binaryPoint = params.getOrElse("binaryPoint", "N/A").toString,
+          pipelineComplexMultiplication = getBoolOpt(params, "pipelineComplexMultiplication"),
+          pipelineButterflyFirstPart = getBoolOpt(params, "pipelineButterflyFirstPart"),
+          pipelineButterflySecondPart = getBoolOpt(params, "pipelineButterflySecondPart"),
+          architecture = params.getOrElse("architecture", "N/A").toString,
+          wns = None,
+          maxFreq = None,
+          fftWns = None,
+          fftMaxFreq = None,
+          luts = None,
+          lutPct = None,
+          ffs = None,
+          ffPct = None,
+          dsps = None,
+          dspPct = None,
+          fftLuts = None,
+          fftLutPct = None,
+          fftFfs = None,
+          fftFfPct = None,
+          fftDsps = None,
+          fftDspPct = None,
+          compileTime = None,
+          synthTime = None,
+          totalTime = None,
+          success = false
+        )
+        println("-" * 40)
+      } else {
+        val res = runParametricBuild(version, tclFile, params, runNum, design, baudRate, clockFreq)
+        res match {
+          case Some(m) => results += m; successful += 1
+          case None => results += Metrics(
             run = runNum,
             fftSize = params.getOrElse("fftSize", "N/A").toString,
             width = params.getOrElse("width", "N/A").toString,
             binaryPoint = params.getOrElse("binaryPoint", "N/A").toString,
-            pipeline = params.getOrElse("pipeline", "N/A").toString,
+            pipelineComplexMultiplication = getBoolOpt(params, "pipelineComplexMultiplication"),
+            pipelineButterflyFirstPart = getBoolOpt(params, "pipelineButterflyFirstPart"),
+            pipelineButterflySecondPart = getBoolOpt(params, "pipelineButterflySecondPart"),
             architecture = params.getOrElse("architecture", "N/A").toString,
             wns = None,
             maxFreq = None,
@@ -392,11 +476,94 @@ object Main extends App {
             totalTime = None,
             success = false
           )
+        }
+        println("-" * 40)
       }
-      println("-" * 40)
     }
-    writeCsv(Paths.get(output), results.toSeq)
-    println(s"\nResults saved to $output")
-    println(s"Successful runs: $successful/${parameterSets.length}")
+    writeCsv(output, results.toSeq)
+    println(s"$design sweep results saved to $output (successful: $successful/${parameterSets.length})")
+    // Print a human-readable summary
+    printSummary(results.toSeq, design)
+  }
+
+  def loadDefaultConfig(): Map[String, Any] = Map(
+    "base_parameters" -> Map("fftSize" -> 8, "width" -> 16, "binaryPoint" -> 8, "pipelineComplexMultiplication" -> false, "pipelineButterflyFirstPart" -> true, "pipelineButterflySecondPart" -> true, "architecture" -> "GS"),
+    "parameter_sweep" -> Map("type" -> "fft_size", "values" -> List(4, 8, 16))
+  )
+
+  def writeCsv(path: Path, results: Seq[Metrics]): Unit = {
+    val header = Seq(
+      "run", "fft_size", "data_width", "binary_point", "pipeline_complex_multiplication", "pipeline_butterfly_first_part", "pipeline_butterfly_second_part",
+      "architecture",
+      "wns_ns", "max_frequency_mhz", "fft_wns_ns", "fft_max_frequency_mhz",
+      "luts_used", "lut_percentage", "ffs_used", "ffs_percentage",
+      "dsps_used", "dsp_percentage",
+      "fft_luts_used", "fft_lut_percentage", "fft_ffs_used", "fft_ffs_percentage",
+      "fft_dsps_used", "fft_dsp_percentage",
+      "ifft_luts_used", "ifft_lut_percentage", "ifft_ffs_used", "ifft_ffs_percentage",
+      "ifft_dsps_used", "ifft_dsp_percentage",
+      "compile_time_s", "synthesis_time_s", "total_time_s", "success"
+    )
+    val pw = new PrintWriter(Files.newBufferedWriter(path, StandardCharsets.UTF_8))
+    try {
+      pw.println(header.mkString(","))
+      results.foreach { r =>
+        val row = Seq(
+          r.run.toString, r.fftSize, r.width, r.binaryPoint, r.pipelineComplexMultiplication.map(_.toString).getOrElse(""), r.pipelineButterflyFirstPart.map(_.toString).getOrElse(""), r.pipelineButterflySecondPart.map(_.toString).getOrElse(""),
+          r.architecture,
+          r.wns.map(_.toString).getOrElse(""), r.maxFreq.map(_.toString).getOrElse(""), r.fftWns.map(_.toString).getOrElse(""), r.fftMaxFreq.map(_.toString).getOrElse(""),
+          r.luts.map(_.toString).getOrElse(""), r.lutPct.map(_.toString).getOrElse(""), r.ffs.map(_.toString).getOrElse(""), r.ffPct.map(_.toString).getOrElse(""),
+          r.dsps.map(_.toString).getOrElse(""), r.dspPct.map(_.toString).getOrElse(""),
+          r.fftLuts.map(_.toString).getOrElse(""), r.fftLutPct.map(_.toString).getOrElse(""), r.fftFfs.map(_.toString).getOrElse(""), r.fftFfPct.map(_.toString).getOrElse(""),
+          r.fftDsps.map(_.toString).getOrElse(""), r.fftDspPct.map(_.toString).getOrElse(""),
+          r.compileTime.map(_.toString).getOrElse(""), r.synthTime.map(_.toString).getOrElse(""), r.totalTime.map(_.toString).getOrElse(""), r.success.toString
+        )
+        pw.println(row.mkString(","))
+      }
+    } finally pw.close()
+  }
+
+  // Print a readable summary to the console
+  def printSummary(results: Seq[Metrics], design: String): Unit = {
+    println("\n" + "=" * 60)
+    println(s"Sweep Summary for: $design")
+    val total = results.length
+    val success = results.count(_.success)
+    val failed = total - success
+    println(s"Total runs: $total, Successful: $success, Failed: $failed")
+    if (total == 0) return
+
+    // Helper formatters
+    def fD(o: Option[Double]) = o.map(v => f"$v%.3f").getOrElse("-")
+    def fI(o: Option[Int]) = o.map(_.toString).getOrElse("-")
+    def fB(o: Option[Boolean]) = o.map(b => if (b) "T" else "F").getOrElse("-")
+
+    // Print header
+    val hdr = "%-4s %-6s %-6s %-6s %-18s %-10s %-8s %-8s %-8s %-6s %-6s %-6s".format(
+      "run", "fft", "width", "binpt", "pipeline", "arch", "max(MHz)", "wns(ns)", "luts", "ffs", "dsps", "time(s)"
+    )
+    println(hdr)
+    println("-" * hdr.length)
+
+    // Print one line per run (successful first)
+    val ordered = results.sortBy(r => (if (r.success) 0 else 1, r.run))
+    for (r <- ordered) {
+      val maxf = fD(r.maxFreq)
+      val wns = fD(r.wns)
+      val luts = fI(r.luts)
+      val ffs = fI(r.ffs)
+      val dsps = fI(r.dsps)
+      val time = fD(r.totalTime)
+      val pipelineStr = s"C:${fB(r.pipelineComplexMultiplication)},B1:${fB(r.pipelineButterflyFirstPart)},B2:${fB(r.pipelineButterflySecondPart)}"
+      val line = "%-4d %-6s %-6s %-6s %-18s %-10s %-8s %-8s %-8s %-6s %-6s %-6s".format(
+        r.run.asInstanceOf[Any], r.fftSize, r.width, r.binaryPoint, pipelineStr, r.architecture.take(10), maxf, wns, luts, ffs, dsps, time
+      )
+      println(line)
+    }
+    println("=" * 60 + "\n")
+  }
+
+  def main(args: Array[String]): Unit = {
+    runInteractive()
   }
 }

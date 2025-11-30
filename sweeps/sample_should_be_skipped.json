@@ -11,13 +11,8 @@
   "parameter_sweep": {
     "type": "multiple",
     "parameters": {
-      "fftSize": [4, 8, 16, 32],
-      "width": [8, 16, 32],
-      "binaryPoint": [4, 8, 16],
-      "architecture": ["GS", "CT"],
-      "pipelineComplexMultiplication": [true, false],
-      "pipelineButterflyFirstPart": [true, false],
-      "pipelineButterflySecondPart": [true, false]
+      "width": [8, 16],
+      "binaryPoint": [4, 8, 16]
     }
   }
 }
