@@ -298,5 +298,31 @@ This is probabily due to the relatively small group size and project scope, whic
 One aspect that was a downside of the continous integration setup was that it developed a very localized setup, where something was only commited once it fully worked (largely due to the tests being developed alongside, if not before, the actual implementation). Perhaps something like branching could be used in future projects, but that also adds overhead and risk of complex merge conflicts.
 ## Conclusion and Future Work
 
+### Pipelined Radix-8 Implementation
+One of the issues with our current implementation is that the generated RTL grows in a tree-like structure as N increases.
+This leads to a rapid increase in the number of LUTs and DSP blocks required to implement the FFT, which for large N values can be infeasible.
+A solution to this would be to reuse butterfly units in a more iterative model, thereby trading a small increase in latency for a significant reduction in LUTs and DSP blocks.
+
+In the Paper ["Design of a radix-8/4/2 FFT Processor for OFDM systems"](https://class.ece.iastate.edu/cpre583/project_presentations/FFT_report.pdf) by Jungmin Park,
+a pipelined radix-8 FFT architecture is presented in which butterfly units are reused across multiple clock cycles, reducing LUT and DSP usage.
+The design includes a commutator unit that routes data into specific memory banks, ensuring that after each butterfly stage the results are correctly permuted and rotated.
+This guarantees that the next stage can access its inputs in the proper order.
+
+We attempted to implement this architecture in our design, but we encountered several issues during the process.
+One issue was that the equation provided for the commutator unit only worked for the first-stage transformation.
+As a result, we were only able to use the algorithm to compute a 64-point FFT and not larger sizes.
+Combined with the difficulty of debugging the algorithm, this architecture was not feasible for our project within the given time constraints.
+
+
+### Replacement of UART
+Our project currently uses the UART module for I/O communication, which is relatively slow compared to the FFT processing speed.
+A more efficient interface such as SPI or I²C could be used to increase the data transfer rate in an embedded system.
+Furthermore, an Ethernet interface could also be implemented to enable high-speed data transfer between the FFT module and a host computer.
+
+
+### Other DSP Features
+This project could be extended to include additional DSP features such as convolution, correlation, and filtering. These operations are highly parallelizable and could therefore benefit significantly from hardware acceleration.
+
+
 
 ## References
