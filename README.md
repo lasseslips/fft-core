@@ -279,13 +279,15 @@ We also provide a [byte buffered version of the FFT module](./src/main/scala/Buf
 One should note that there currently is no care taken to avoid overflow in the fixed-point arithmetic. In a production design, one would likely want to implement some form of scaling or saturation logic to prevent overflow and ensure numerical stability. This could be a shift in the fixed-point representation after each stage, which would reduce precision but increase the range of representable values and prevent overflow. This is left as future work.
 
 ## Testing
-Testing is performed using the ChiselTest framework and relies in most cases heavily on testing randomized inputs to cover a wide range of scenarios and verifying them by comparison to a golden software model, in this case the computation performed using the Scala Breeze library. 
+Testing is performed using the ChiselTest framework and relies in most cases heavily on testing randomized inputs to cover a wide range of scenarios and verifying them by comparison to a golden software model, in this case the computation performed using the Scala Breeze library. Tests were developed and adapted alongside the implementation to ensure correctness at each step of development.
 
 For testing a simple Butterfly a small golden model has also been written of that, working in floating point and converting to fixed-point for comparison. 
 
 One particular challenge was to account for pipeling latencies in the tests, especially in the main [ButterflyNSpec.scala](./src/test/scala/ButterflyNSpec.scala) where random inputs are continously fed into the FFT module every clock cycle. This required careful tracking of when outputs would be valid based on the number of pipeline stages and the latency introduced by each butterfly stage.
 
 For [testing the UART interfaced module](./src/test/scala/UartedFTSpec.scala) important considerations was to reduce the test time as much as possible, as sending data byte-by-byte through a UART interface is inherently slow. To achieve this, the baudrate was set to 1 and the frequency to 100. This allowed for reducing the amount of clock cycles per byte sent, speeding up the overall test time significantly, though still resulting in tests taking multiple minutes to complete.
+
+The FPGA test platform was also used for real-world verification of the design. This involved synthesizing the design for an FPGA target, programming the FPGA, and running the test vectors stored in block RAM. By lighting up LEDs based on the success or failure of the tests, we could quickly assess the correctness of the implementation in a real hardware environment and everything passed as expected.
 
 ## Synthesis and Performance
 
@@ -300,7 +302,7 @@ In [our continuous integration pipeline](.github/workflows/scala.yml), we set up
 This is probabily due to the relatively small group size and project scope, which made communication and coordination easier without the need for extensive agile practices. However, the experience provided valuable insights into how agile methodologies can be applied in hardware design projects.
 
 One aspect that was a downside of the continous integration setup was that it developed a very localized setup, where something was only commited once it fully worked (largely due to the tests being developed alongside, if not before, the actual implementation). Perhaps something like branching could be used in future projects, but that also adds overhead and risk of complex merge conflicts.
-## Conclusion & Future Work
+## Conclusion & Future Work 
 
 ### Pipelined Radix-8 Implementation
 One of the issues with our current implementation is that the generated RTL grows in a tree-like structure as N increases.
