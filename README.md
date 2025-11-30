@@ -29,6 +29,7 @@ Elements of the UART implementation has previously been handed in and is not ori
 - FPGA test platform support for real-world performance evaluation.
 - Optional scala and tcl building and synthesis scripts for evaluating performance on FPGA targets using Vivado.
   - Depends on having Vivado installed and accessible through WSL on Windows systems.
+  - Not tested on Linux systems.
 
 ### Repository Structure
 The repository follows a standard SBT-based Scala project structure, seperating source code and tests:
@@ -255,8 +256,8 @@ $ W_N^{-k} = e^{j \frac{2 \pi}{N} k}$.
 ## Number Representation
 As floating-point arithmetic is an expensive operation in hardware, this design opts for fixed-point representation of numbers. Fixed-point numbers are represented with a total bit width and a specified number of fractional bits, allowing for efficient arithmetic operations while maintaining a balance between range and precision. It can be represented in Q(m.n) format, where m is the number of integer bits (including the sign bit) and n is the number of fractional bits.
 
-
-The use of fixed-point arithmetic introduces quantization errors, which can accumulate through the stages of the FFT. 
+The use of fixed-point arithmetic introduces quantization errors, which can accumulate through the stages of the FFT.
+Addionally, one should note that multiplying two Q(m.n) numbers results in a Q(2m.2n) number, which may require truncation or rounding to fit back into the original format. This can introduce further quantization errors, and is especially important in systems where multiple multiplications occur, such as in the FFT.
 
 ## Design and Implementation
 Two general approaches are clear for implementing the FFT. One is an unrolled architecture, where all butterflies and stages are instantiated in parallel, allowing for maximum throughput at the cost of increased resource usage. The other is a iterative architecture, where a single butterfly unit is reused across multiple clock cycles to process the FFT in stages, reducing resource usage at the cost of throughput.
@@ -275,6 +276,8 @@ To verify the functionality of the implementation, simulation is utilized, as de
 
 We also provide a [byte buffered version of the FFT module](./src/main/scala/BufferedFFT.scala) that can interface with byte-based communication protocols, such as UART. This version includes additional logic to handle the buffering and conversion of byte streams into the fixed-point format required by the FFT module, packaged into the wrapped [interfaced module](.src/InterfacedFFT.scala). Utilized in the buffered module is a ready/valid interface to manage the data flow. An example mapping to a UART module (see [communication readme for source](./src/main/scala/communication/README.md)) is also [provided](./src/main/scala/UartedFFT.scala) and has been tested on FPGA. It should be noted that the UART interface is relatively slow compared to the FFT processing speed, and as such the FFT will often be idle waiting for new data to arrive. For this reason the pipelining ability is not fully utilized in this configuration, only computing one FFT every time enough data has been received, rather than a continous stream of data. The pipelining here is therefore only useful for achieving timing closure.
 
+One should note that there currently is no care taken to avoid overflow in the fixed-point arithmetic. In a production design, one would likely want to implement some form of scaling or saturation logic to prevent overflow and ensure numerical stability. This could be a shift in the fixed-point representation after each stage, which would reduce precision but increase the range of representable values and prevent overflow. This is left as future work.
+
 ## Testing
 Testing is performed using the ChiselTest framework and relies in most cases heavily on testing randomized inputs to cover a wide range of scenarios and verifying them by comparison to a golden software model, in this case the computation performed using the Scala Breeze library. 
 
@@ -286,6 +289,7 @@ For [testing the UART interfaced module](./src/test/scala/UartedFTSpec.scala) im
 
 ## Synthesis and Performance
 
+
 ## Project Agility
 As the project was conducted as part of the Agile Hardware Design course, we adopted agile methodologies to manage our development process effectively and we would like to also touch upon those. We utilized iterative development and continuous integration practices to ensure that our design evolved in response to the project requirements and time.
 
@@ -296,7 +300,7 @@ In [our continuous integration pipeline](.github/workflows/scala.yml), we set up
 This is probabily due to the relatively small group size and project scope, which made communication and coordination easier without the need for extensive agile practices. However, the experience provided valuable insights into how agile methodologies can be applied in hardware design projects.
 
 One aspect that was a downside of the continous integration setup was that it developed a very localized setup, where something was only commited once it fully worked (largely due to the tests being developed alongside, if not before, the actual implementation). Perhaps something like branching could be used in future projects, but that also adds overhead and risk of complex merge conflicts.
-## Conclusion and Future Work
+## Conclusion
 
 
 ## References
