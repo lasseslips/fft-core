@@ -300,7 +300,7 @@ In [our continuous integration pipeline](.github/workflows/scala.yml), we set up
 This is probabily due to the relatively small group size and project scope, which made communication and coordination easier without the need for extensive agile practices. However, the experience provided valuable insights into how agile methodologies can be applied in hardware design projects.
 
 One aspect that was a downside of the continous integration setup was that it developed a very localized setup, where something was only commited once it fully worked (largely due to the tests being developed alongside, if not before, the actual implementation). Perhaps something like branching could be used in future projects, but that also adds overhead and risk of complex merge conflicts.
-## Conclusion
+## Conclusion & Future Work
 
 ### Pipelined Radix-8 Implementation
 One of the issues with our current implementation is that the generated RTL grows in a tree-like structure as N increases.
