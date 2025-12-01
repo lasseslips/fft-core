@@ -1,4 +1,6 @@
-## Fast Fourier Transform Generator Library
+# Fast Fourier Transform Generator Library
+[![CI](https://github.com/lasseslips/fft-core/actions/workflows/ci.yml/badge.svg)](https://github.com/lasseslips/fft-core/actions/workflows/scala.yml)
+
 This repository contains a library for generating RTL for the Fast Fourier Transform (FFT) algorithm using Chisel, a hardware construction language embedded in Scala.
 
 Created as part of the "[Agile Hardware Design](https://github.com/schoeberl/agile-hw)" ([02201](https://kurser.dtu.dk/course/02201)) course at DTU.
