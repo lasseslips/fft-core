@@ -10,7 +10,7 @@ This readme is best read with support for LaTeX math rendering enabled (such as 
 - Lasse Slipsager (s224007, [lasseslips](https://github.com/lasseslips))
 - Henrique Agostinho Loureiro dos Santos de Oliveira (s252981)
 
-[Github commits](https://github.com/lasseslips/fft-core/commits/master/) accurately reflect individual contributions.
+[Github commits](https://github.com/lasseslips/fft-core/commits/master/) authors accurately reflect individual contributions.
 
 Elements of the UART implementation has previously been handed in and is not original work of the creators. See [the communication folder](./src/main/scala/communication/README.md) for more details.
 
@@ -32,29 +32,8 @@ Elements of the UART implementation has previously been handed in and is not ori
   - Not tested on Linux systems.
 
 ### Repository Structure
-The repository follows a standard SBT-based Scala project structure, seperating source code and tests:
+The repository follows a standard SBT-based Scala project structure, seperating [source code](./src/main/) and [test code](./src/test/). Under `src/main/scala/`, the code is organized into several packages reflecting different components of the FFT implementation and supporting modules. 
 
-```
-fft-core/
-├── src/
-│   ├── main/
-│   │   ├── scala/
-│   │   │   ├── buildtools/ - Scripts for building and synthesizing designs
-│   │   │   ├── communication/ - UART and other communication protocol modules
-│   │   │   ├── uart/ - A UART client to interface with the FFT
-│   │   │   ├── utils/ - Utility functions and classes
-│   │   │   ├── verifier/ - Verification and testing modules for getting golden model results
-|   │   │   ├── Various modules and implementations, including Butterfly and FFT modules. Complex.scala includes complex number operations.
-│   │   ├── tcl/
-
-
-
-
-
-
-
-
-```
 
 ### Getting Started
 
@@ -96,11 +75,11 @@ $ E(k) = \sum_{m=0}^{N/2-1} x(2m) \cdot e^{-j \frac{2 \pi}{N/2} k m} $
 
 $ O(k) = \sum_{m=0}^{N/2-1} x(2m+1) \cdot e^{-j \frac{2 \pi}{N/2} k m} $
 
-This can be further simplified using the periodicity and symmetry properties of the complex exponential function, leading to the use of "twiddle factors" which are precomputed complex exponentials that help combine the results of the smaller DFTs efficiently.
+This can be further simplified using the periodicity and symmetry properties of the complex exponential function, leading to the use of "twiddle factors" which are can be defined as:
 
 $ W_N^k = e^{-j \frac{2 \pi}{N} k} $
 
-The syntax of the twidlle factors can be read as "W sub N to the power of k", where N is the total number of points in the FFT and k is the index of the twiddle factor.
+The twiddle factors are used to combine the results of the even and odd indexed DFTs:
 
 $ X(k) = E(k) + W_N^k \cdot O(k) $
 
@@ -290,7 +269,47 @@ For [testing the UART interfaced module](./src/test/scala/UartedFTSpec.scala) im
 The FPGA test platform was also used for real-world verification of the design. This involved synthesizing the design for an FPGA target, programming the FPGA, and running the test vectors stored in block RAM. By lighting up LEDs based on the success or failure of the tests, we could quickly assess the correctness of the implementation in a real hardware environment and everything passed as expected.
 
 ## Synthesis and Performance
+To evaluate the performance and capabilities of the described hardware, synthesis has been performed targetting the Xilinx Artix-7 FPGA on a Basys 3 board. This has been done both for the FPGA test platform as well as the UART interfaced module. As descirbed earlier, a synthesis script was developed to automate the synthesis process going from Chisel to resource reports in Vivado. This, paired with some sweeps over different configurations, allowed for gathering performance data for various FFT sizes, Q-formats, architectures and pipelining options.
 
+Here we present some results of a sweep of the UART interfaced FFT module, varying the FFT size from 4 to 32 points, the Q-format between Q8.4, Q16.4, Q16.8, Q32.4, Q32.8, and Q32.16, both DIT and DIF architectures and all pipelining options. This resulted in a upwards of 500 synthesis runs, from which we present a visualzition of the results in this section. The complete results can be found in the [results.txt file](./results.txt) or in the [results_filt.txt file](./results_filt.txt) which only contains only the valid configurations and those that were able to fit on the FPGA.
+A target frequency of 100 MHz was true for all configurations. Note that the UART FFT module includes additional logic for buffering and interfacing with the UART, so the resource usage is higher than that of the bare FFT module.
+Max frequency are also taken from the entire design. As such the critical path may not be in the FFT module itself, but rather in the UART or buffering logic. We attempted to extract the FFT module separately, but could not get a reliable script that could parse the relevent data. 
+
+It was found that no configurations with Q32.x could be synthesized to fit on the FPGA, likely due to the high resource usage of 64-bit multipliers in the butterflies. As such these configurations have been omitted from the plots, generated with [a python script](./python/plot_results.py) using matplotlib and seaborn (see [requirements.txt](./python/requirements.txt) for dependencies).
+
+The first highlighed plots will show a comparison of results between the DIT and DIF architectures and see if any of them allow for better performance or resource usage through some synthesis optimizations.
+Note that Q-format, pipelining are not indicated in these plots, only FFT size, but they do have an impact on the results. We will start with the LUT usage.
+![Max Frequency DIT vs DIF](./diagrams/plots/arch_compare_luts_CT_vs_GS.png)
+This can be seen to be very similar between the two architectures, with perhaps a slight edge to the DIF that sees marginally lower LUT usage for some sizes.
+![Max Frequency DIT vs DIF](./diagrams/plots/arch_compare_ffs_CT_vs_GS.png)
+The flip-flops usage is also very similar between the for most cases of the two architectures, with outliers to both sides.
+![Max Frequency DIT vs DIF](./diagrams/plots/arch_compare_dsps_CT_vs_GS.png)
+The usage of the FPGA's DSP blocks is identical between the two architectures, as expected, since the arithmetic operations are the same.
+![Max Frequency DIT vs DIF](./diagrams/plots/arch_compare_maxMhz_CT_vs_GS.png)
+The maximum frequency shows quite variation between the two architectures, with neither being clearly better than the other across all sizes. Based on this one would likely need to investigate specific configurations to determine which architecture is better suited for a given set of parameters, and no general conclusion can be drawn.
+
+The following plots show the max frequency achieved and the LUT usage for the size FFTs over different piplining options (indicated by color) and widths (indicated by shape) for the DIT and DIF architectures collectively, starting with N=4:
+![LUT Usage](./diagrams/plots/scatter_mhz_vs_luts_fft_4.png)
+It can be seen that widths generally use the same amount of LUTs, but pipelining has a significant impact on the maximum frequency achieved as expected. Outliers for the first observations are seen with the fully pipelined FFTs, requiring significantly more LUTs. This might be attributed to the UART logic also scaling. One interesting observation is that the non-pipelined configurations achieve quite high frequencies for the low width, outscaling some pipelined configurations. This might be due to the lower combinational path delays at low widths, allowing for high frequencies even without pipelining, though non-pipelined configutatons rapidly lose performance as width increases, as expected.
+![LUT Usage](./diagrams/plots/scatter_mhz_vs_luts_fft_8.png)
+For N=8 the trends are similar, though the non-pipelined configurations no longer reach such high frequencies. 
+The 32-bit width highly pipelined configurations also begin to trend around the 100 MHz mark.
+![LUT Usage](./diagrams/plots/scatter_mhz_vs_luts_fft_16.png)
+For N=16 the trends continue, with the 32-bit configurations now all being unable to reach 100 MHz. Their resource usage has also expanded significantly. The low width pipelined configurations are still almost all able to higher than 100 MHz.
+![LUT Usage](./diagrams/plots/scatter_mhz_vs_luts_fft_32.png)
+For N=32 the previous trends are still true. The 32-bit configurations are now all unable to fit on the FPGA. The 8-bit configurations are still able to reach above 100 MHz when pipelined, but most of the 16-bit configurations are also unable to reach that frequency now unless very highly pipelined.
+
+As the explosion in resource usage of FFT 16 was quite perplexing, we also present the DSP usage plots to see how they scale with size, width and pipelining. Starting with N=4:
+![DSP Usage](./diagrams/plots/scatter_mhz_vs_dsps_fft_4.png)
+Here no DSP usage is reported, no matter the width. The synthesis tool must have found that the usage of the DSPs would have a lower frequency than using LUT-based multipliers for such a small FFT.
+![DSP Usage](./diagrams/plots/scatter_mhz_vs_dsps_fft_8.png)
+For N=8 we begin to see some DSP usage for the higher widths. Notably the usage seems not to depend on pipelining. All the configurations using more than 8 DSPs suffer significantly in maximum frequency.
+![DSP Usage](./diagrams/plots/scatter_mhz_vs_dsps_fft_16.png)
+For N=16 suddenly the 16-width configurations use more DSPs than the 32-width configurations. This is quite unexpected, but might be due to the synthesis tool being able to better optimize the usage of DSPs for the 32-width configurations. This could explain the large jump in LUT usage for the 16-width configurations as they must then rely on LUT-based multipliers instead of DSPs.
+![DSP Usage](./diagrams/plots/scatter_mhz_vs_dsps_fft_32.png)
+For N=32, some configurations start to use all DSPs available on the FPGA. 
+
+From these plots a user will be able to select a configuration that meets their resource constraints while achieving the desired performance (or at least serving as a starting point for further exploration).
 
 ## Project Agility
 As the project was conducted as part of the Agile Hardware Design course, we adopted agile methodologies to manage our development process effectively and we would like to also touch upon those. We utilized iterative development and continuous integration practices to ensure that our design evolved in response to the project requirements and time.
@@ -303,8 +322,14 @@ This is probabily due to the relatively small group size and project scope, whic
 
 One aspect that was a downside of the continous integration setup was that it developed a very localized setup, where something was only commited once it fully worked (largely due to the tests being developed alongside, if not before, the actual implementation). Perhaps something like branching could be used in future projects, but that also adds overhead and risk of complex merge conflicts.
 ## Conclusion & Future Work 
+A fully functional FFT and IFFT implementation has been developed in Chisel, supporting both DIT and DIF architectures, with fixed-point arithmetic and pipelining for high performance. The design has been verified through simulation and FPGA testing, demonstrating its correctness and efficiency.
 
-### Pipelined Radix-8 Implementation
+Several avenues for future work and improvements exist, including:
+
+### Numerical Stability Enhancements
+TODO
+
+### Iterative Architecture
 One of the issues with our current implementation is that the generated RTL grows in a tree-like structure as N increases.
 This leads to a rapid increase in the number of LUTs and DSP blocks required to implement the FFT, which for large N values can be infeasible.
 A solution to this would be to reuse butterfly units in a more iterative model, thereby trading a small increase in latency for a significant reduction in LUTs and DSP blocks.
@@ -315,10 +340,9 @@ The design includes a commutator unit that routes data into specific memory bank
 This guarantees that the next stage can access its inputs in the proper order.
 
 We attempted to implement this architecture in our design, but we encountered several issues during the process.
-One issue was that the equation provided for the commutator unit only worked for the first-stage transformation.
+One issue was that the equation provided for the commutator unit only worked for the first-stage transformation..
 As a result, we were only able to use the algorithm to compute a 64-point FFT and not larger sizes.
 Combined with the difficulty of debugging the algorithm, this architecture was not feasible for our project within the given time constraints.
-
 
 ### Replacement of UART
 Our project currently uses the UART module for I/O communication, which is relatively slow compared to the FFT processing speed.
@@ -327,8 +351,4 @@ Furthermore, an Ethernet interface could also be implemented to enable high-spee
 
 
 ### Other DSP Features
-This project could be extended to include additional DSP features such as convolution, correlation, and filtering. These operations are highly parallelizable and could therefore benefit significantly from hardware acceleration.
-
-
-
-## References
+This project could be extended to include additional DSP features such as convolution, correlation, and filtering. These operations are highly parallelizable and generatable and could therefore benefit also from a hardware implementation in Chisel. Integrating these features with the FFT module could provide a comprehensive DSP solution for various applications.

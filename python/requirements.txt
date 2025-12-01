@@ -1,0 +1,7 @@
+# Pip requirements for the analysis tools
+# Install with: pip install -r tools/requirements.txt
+
+pandas>=1.5
+numpy>=1.24
+matplotlib>=3.6
+seaborn>=0.12
