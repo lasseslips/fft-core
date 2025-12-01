@@ -8,6 +8,8 @@ import utils.FixedPointUtils
 import utils.ChunkUtils
 import verifier.ScalaFFTVerifier
 
+//  :sendfft 16 8 16 1.0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0
+//  :sendfft 16 8 16 1.0,1.0 2.5,-0.5 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0 0,0
 
 object UartTool extends App {
   def listPorts(): Array[SerialPort] = SerialPort.getCommPorts
