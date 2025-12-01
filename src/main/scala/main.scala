@@ -22,6 +22,6 @@ object Main extends App {
       FFTTestData.generateTestCase(fftSize, "dc", width, binaryPoint),
       FFTTestData.generateTestCase(fftSize, "random", width, binaryPoint)
   )
-  //emitVerilog(new FPGATestTop(fftSize, width, binaryPoint, pipeline, testCases, architecture), Array("--target-dir", "verilog"))
+  emitVerilog(new FPGATestTop(fftSize, width, binaryPoint, pipeline, testCases, architecture), Array("--target-dir", "verilog"))
   emitVerilog(new UartedFFT(baudRate, clockFreq, width, binaryPoint, fftSize, pipeline, architecture), Array("--target-dir", "verilog"))
 }

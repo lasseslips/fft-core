@@ -36,10 +36,9 @@ The repository follows a standard SBT-based Scala project structure, seperating 
 
 
 ## Getting Started
+For a simple run of the FFT generator (generating both the UART interfaced and the FPGA test platform), follow these steps:
 ### Prerequisites
-Make Sure that the following tools are installed:
-- SBT >= 1.9
-- Java JDK 8 or higher
+Make sure that the prerequistes for Chisel 6.7 are installed.
 
 ### Installation
 1. Clone the repository: 
@@ -54,16 +53,14 @@ cd fft-core
 ```
 sbt run
 ```
+4. Choose to run the `Main` object when prompted.
+
+If you wish to customize the FFT parameters, you can modify the values in the [Main.scala](./src/main/scala/Main.scala) file before running the project.
 
 ### Generated Verilog file
-The project generates a Verilog file containing the FFT implementation. This can be found in the `target/` directory after running the project.
-This file can be synthesized and implemented on your target FPGA board.
+The project generates a Verilog file containing the FFT implementation. This can be found in the `verilog/` directory after running the project.
 
-
-### Usage
-To use the FFT-Core you will access it through the UART interface.
-The UART interface is configured at a baudrate of 115200. To communicate with the FFT-Core, you can use any serial terminal program (e.g., PuTTY, Tera Term, minicom).
-
+If you wish to interacat with the UART interfaced FFT module, you can find a quickly put-together client in the [./src/main/scala/uart/UartTool](./src/main/scala/uart/UartTool) folder. This client can send and receive data to/from the FFT module in a correct format and validate the results. Make sure to adjust the serial port settings in the code to match your setup. This can also be compiled and run using SBT, just choose it as the main class when prompted.
 
 ## Motivation
 The Fast Fourier Transform (FFT) is a fundamental algorithm in digital signal processing, which is widely used in applications such as audio processing, image analysis, telecommunications, and more.
