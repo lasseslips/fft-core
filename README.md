@@ -35,7 +35,34 @@ Elements of the UART implementation has previously been handed in and is not ori
 The repository follows a standard SBT-based Scala project structure, seperating [source code](./src/main/) and [test code](./src/test/). Under `src/main/scala/`, the code is organized into several packages reflecting different components of the FFT implementation and supporting modules. 
 
 
-### Getting Started
+## Getting Started
+### Prerequisites
+Make Sure that the following tools are installed:
+- SBT >= 1.9
+- Java JDK 8 or higher
+
+### Installation
+1. Clone the repository: 
+```
+git clone https://github.com/s224007/fft-core.git
+```
+2. Navigate to the project directory:  
+```
+cd fft-core
+```
+3. Build the project with:
+```
+sbt run
+```
+
+### Generated Verilog file
+The project generates a Verilog file containing the FFT implementation. This can be found in the `target/` directory after running the project.
+This file can be synthesized and implemented on your target FPGA board.
+
+
+### Usage
+To use the FFT-Core you will access it through the UART interface.
+The UART interface is configured at a baudrate of 115200. To communicate with the FFT-Core, you can use any serial terminal program (e.g., PuTTY, Tera Term, minicom).
 
 
 ## Motivation
