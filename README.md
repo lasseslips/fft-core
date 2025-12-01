@@ -62,6 +62,8 @@ The project generates a Verilog file containing the FFT implementation. This can
 
 If you wish to interacat with the UART interfaced FFT module, you can find a quickly put-together client in the [./src/main/scala/uart/UartTool](./src/main/scala/uart/UartTool) folder. This client can send and receive data to/from the FFT module in a correct format and validate the results. Make sure to adjust the serial port settings in the code to match your setup. This can also be compiled and run using SBT, just choose it as the main class when prompted.
 
+Constraint files for the Basys3 board are also provided in the [constraints/](./constraints/) folder, which can be used to map the FFT module to the FPGA pins.
+
 ## Motivation
 The Fast Fourier Transform (FFT) is a fundamental algorithm in digital signal processing, which is widely used in applications such as audio processing, image analysis, telecommunications, and more.
 In many of these applications, real-time processing is crucial to adhere to performance requirements. To achieve the lowest possible latency, the FFT is often implemented directly in hardware,
