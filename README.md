@@ -346,12 +346,12 @@ This is probabily due to the relatively small group size and project scope, whic
 
 One aspect that was a downside of the continous integration setup was that it developed a very localized setup, where something was only commited once it fully worked (largely due to the tests being developed alongside, if not before, the actual implementation). Perhaps something like branching could be used in future projects, but that also adds overhead and risk of complex merge conflicts.
 ## Conclusion & Future Work 
-A fully functional FFT and IFFT implementation has been developed in Chisel, supporting both DIT and DIF architectures, with fixed-point arithmetic and pipelining for high performance. The design has been verified through simulation and FPGA testing, demonstrating its correctness and efficiency.
+A fully functional unrolled FFT and IFFT implementation has been developed in Chisel, supporting both DIT and DIF architectures, with fixed-point arithmetic and pipelining for high performance. The design has been verified through simulation and FPGA testing, demonstrating its correctness and efficiency.
 
 Several avenues for future work and improvements exist, including:
 
 ### Numerical Stability Enhancements
-TODO
+To improve the numerical stability and prevent overflow in fixed-point arithmetic, scaling or saturation logic could be implemented. This could involve shifting the fixed-point representation after each stage to balance range and precision. This would complicate the generation of the butterfly units, as each stage would need to account for the scaling, but would enhance the robustness of the design.
 
 ### Iterative Architecture
 One of the issues with our current implementation is that the generated RTL grows in a tree-like structure as N increases.
@@ -366,7 +366,7 @@ This guarantees that the next stage can access its inputs in the proper order.
 We attempted to implement this architecture in our design, but we encountered several issues during the process.
 One issue was that the equation provided for the commutator unit only worked for the first-stage transformation..
 As a result, we were only able to use the algorithm to compute a 64-point FFT and not larger sizes.
-Combined with the difficulty of debugging the algorithm, this architecture was not feasible for our project within the given time constraints.
+Combined with the difficulty of debugging the algorithm, this architecture was not feasible for our project within the given time constraints. Some elements of this architecture are implemented in [BankIndex.scala](./src/main/scala/BankIndex.scala).
 
 ### Replacement of UART
 Our project currently uses the UART module for I/O communication, which is relatively slow compared to the FFT processing speed.
