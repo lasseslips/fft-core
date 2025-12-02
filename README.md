@@ -1,5 +1,5 @@
 # Fast Fourier Transform Generator Library
-[![Tests](https://img.shields.io/github/actions/workflow/status/lasseslips/fft-core/scala.yml?label=tests&branch=main)](https://github.com/lasseslips/fft-core/actions/workflows/scala.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/lasseslips/fft-core/scala.yml?label=tests&branch=master)](https://github.com/lasseslips/fft-core/actions/workflows/scala.yml)
 
 This repository contains a library for generating RTL for the Fast Fourier Transform (FFT) algorithm using Chisel, a hardware construction language embedded in Scala.
 
