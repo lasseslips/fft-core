@@ -338,7 +338,7 @@ This can be seen to be very similar between the two architectures, with perhaps 
 The flip-flop usage is also very similar between the two architectures for most cases, with outliers to both sides.
 ![Max Frequency DIT vs DIF](./diagrams/plots/arch_compare_dsps_CT_vs_GS.png)
 The usage of the FPGA's DSP blocks is identical between the two architectures, as expected, since the arithmetic operations are the same.
-![Max Frequency DIT vs DIF](./diagrams/plots/arch_compare_maxMhz_CT_vs_GS.png)
+![Max Frequency DIT vs DIF](./diagrams/plots/arch_compare_maxMHz_CT_vs_GS.png)
 The maximum frequency shows quite variation between the two architectures, with neither being clearly better than the other across all sizes. Based on this one would likely need to investigate specific configurations to determine which architecture is better suited for a given set of parameters, and no general conclusion can be drawn.
 
 The following plots show the max frequency achieved and the LUT usage for the size FFTs over different pipelining options (indicated by color) and widths (indicated by shape) for the DIT and DIF architectures collectively, starting with N=4:
